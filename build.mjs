@@ -6,11 +6,11 @@ import { createHash } from 'node:crypto';
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 const css = read('./src/style.css');
 const body = read('./src/body.html');
-const scripts = ['engine.js', 'ai.js', 'decks.js', 'i18n.js', 'app.js'].map((f) => read('./src/' + f)).join('\n;\n');
+const scripts = ['vendor/qrcode.min.js', 'vendor/jsQR.min.js', 'engine.js', 'ai.js', 'decks.js', 'i18n.js', 'net.js', 'app.js'].map((f) => read('./src/' + f)).join('\n;\n');
 // Keep a literal "</script" out of inline code.
 const js = scripts.replace(/<\/script/gi, '<\\/script');
 
-const description = 'Briscola for 2 to 4 players on one phone, with regional Italian decks.';
+const description = 'Briscola for 2 to 4 players on one phone or several, with regional Italian decks.';
 
 const standalone = `<!doctype html>
 <html lang="en">
@@ -54,6 +54,7 @@ body { touch-action: manipulation; }
 #game { padding-top: 0; padding-bottom: 0; }
 </style>
 ${body}
+<script>window.BRISCOLA_NO_NET = true;</script>
 <script>
 ${js}
 </script>

@@ -27,9 +27,7 @@ jobs:
       - name: Check committed build is up to date
         run: git diff --exit-code -- index.html sw.js
       - name: Collect site files
-        run: |
-          mkdir -p _site
-          cp index.html sw.js manifest.webmanifest icon.svg icon-*.png _site/
+        run: npm run site
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

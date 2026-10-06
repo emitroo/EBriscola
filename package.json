@@ -5,6 +5,7 @@
   "description": "Offline pass-and-play Briscola for 2-4 players on one phone, with regional Italian decks.",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "site": "node build.mjs && rm -rf _site && mkdir _site && cp index.html sw.js manifest.webmanifest icon.svg icon-*.png _site/"
   }
 }

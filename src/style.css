@@ -280,3 +280,54 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* ---------- phones: pairing, lobby, connection state ---------- */
+.btn small { display: block; font-size: 12px; font-weight: 500; opacity: 0.8; margin-top: 2px; }
+.btn-ink { background: var(--ink); color: var(--paper); }
+.panel .btn-ghost, .sheet .btn-ghost { color: var(--ink); }
+.panel-head svg { width: 20px; height: 20px; color: var(--ink-soft); }
+.devs { display: flex; flex-direction: column; gap: 6px; }
+.dev-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 10px; align-items: center; background: var(--paper-2); border-radius: 10px; padding: 8px 8px 8px 12px; }
+.dev-meta { display: flex; flex-direction: column; min-width: 0; }
+.dev-meta strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dev-meta span { font-size: 12px; color: var(--ink-soft); }
+.sdot { width: 10px; height: 10px; border-radius: 50%; background: #b9ad8f; }
+.sdot.on { background: #2f9a4c; box-shadow: 0 0 0 3px rgba(47,154,76,0.2); }
+.sdot.off { background: var(--wine); }
+.room-box { display: flex; flex-direction: column; align-items: center; gap: 8px; background: var(--paper-2); border-radius: 12px; padding: 12px; text-align: center; }
+.room-box .kicker { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-soft); }
+.room-code { font-family: var(--f-display); font-size: 40px; font-weight: 700; letter-spacing: 6px; font-variant-numeric: tabular-nums; line-height: 1; }
+.qr-box { background: #fff; border-radius: 12px; padding: 10px; width: min(78vw, 300px); aspect-ratio: 1; align-self: center; display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08); max-width: 100%; }
+.qr-box svg { width: 100%; height: 100%; display: block; }
+.qr-box.small { width: min(44vw, 170px); }
+.cam { width: min(78vw, 300px); aspect-ratio: 4 / 3; align-self: center; border-radius: 12px; overflow: hidden; background: #000; max-width: 100%; }
+.cam video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.step { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; align-items: start; }
+.step b { width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: var(--paper); display: grid; place-items: center; font-size: 13px; }
+.pair-status { text-align: center; font-weight: 600; color: var(--ink); min-height: 1.4em; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.sheet details { border-top: 1px solid var(--paper-2); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.sheet details[open] { gap: 10px; }
+.sheet summary { cursor: pointer; font-size: 14px; color: var(--wine); font-weight: 600; }
+.sheet details > * + * { margin-top: 8px; }
+.codebox { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.field input, .field textarea, .codebox textarea, .room-join input { width: 100%; min-width: 0; border: 1.5px solid var(--paper-2); background: #fffdf7; border-radius: 9px; padding: 9px 10px; font: inherit; color: var(--ink); font-weight: 400; }
+.codebox textarea, .field textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; resize: vertical; word-break: break-all; }
+.room-join { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.room-join input { font-family: var(--f-display); font-size: 24px; letter-spacing: 5px; text-transform: uppercase; text-align: center; min-height: 48px; }
+.lobby-seats { display: flex; flex-direction: column; gap: 6px; }
+.lobby-seat { display: flex; align-items: center; gap: 8px; background: var(--paper-2); border-radius: 10px; padding: 8px 10px; }
+.lobby-seat .dot { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: #fffdf7; flex: none; }
+.lobby-seat .dot.team-a { background: var(--team-a); } .lobby-seat .dot.team-b { background: var(--team-b); color: #fff; }
+.lobby-seat .nm { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lobby-seat .badge { background: var(--ink); color: var(--paper); }
+.lobby-seat .badge.mine { background: var(--wine); color: #fff; }
+.netbanner { background: var(--wine); color: #fff; border-radius: 12px; padding: 12px 14px; font-weight: 600; font-size: 14px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.net-chip { border: 0; border-radius: 9px; padding: 6px 9px; font-size: 12px; font-weight: 700; cursor: pointer; background: var(--wine); color: #fff; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.badge svg { width: 11px; height: 11px; vertical-align: -1px; }
+.badge.warn { background: var(--wine); color: #fff; }
+.sheet.pair { gap: 12px; }
+.sheet.pair h3 { margin-top: 4px; }
+
+.seats.stacked .seat-row { grid-template-columns: 26px minmax(0, 1fr); }
+.seats.stacked .seat-ctrl { grid-column: 2; flex-wrap: wrap; }
