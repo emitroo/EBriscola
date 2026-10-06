@@ -1,0 +1,71 @@
+// Bundles src/ into a single self-contained index.html (offline PWA) and dist/artifact.html (claude.ai Artifact fragment).
+// Usage: node build.mjs
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+
+const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
+const css = read('./src/style.css');
+const body = read('./src/body.html');
+const scripts = ['engine.js', 'ai.js', 'decks.js', 'i18n.js', 'app.js'].map((f) => read('./src/' + f)).join('\n;\n');
+// Keep a literal "</script" out of inline code.
+const js = scripts.replace(/<\/script/gi, '<\\/script');
+
+const description = 'Briscola for 2 to 4 players on one phone, with regional Italian decks.';
+
+const standalone = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#113524">
+<meta name="description" content="${description}">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Briscola">
+<title>Briscola</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+${css}
+body { touch-action: manipulation; }
+</style>
+</head>
+<body>
+${body}
+<script>
+${js}
+</script>
+<script>
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
+`;
+
+// The Artifact host wraps the page in its own document skeleton and pads :root by the safe-area insets.
+const artifact = `<title>Briscola</title>
+<style>
+${css}
+body { touch-action: manipulation; }
+#game { padding-top: 0; padding-bottom: 0; }
+</style>
+${body}
+<script>
+${js}
+</script>
+`;
+
+writeFileSync(new URL('./index.html', import.meta.url), standalone);
+mkdirSync(new URL('./dist/', import.meta.url), { recursive: true });
+writeFileSync(new URL('./dist/artifact.html', import.meta.url), artifact);
+
+// Service worker cache name follows the content so phones pick up new versions.
+const version = createHash('sha1').update(standalone).digest('hex').slice(0, 10);
+const sw = read('./src/sw.template.js').replace('__VERSION__', version);
+writeFileSync(new URL('./sw.js', import.meta.url), sw);
+
+console.log(`index.html ${(standalone.length / 1024).toFixed(1)} KB, sw version ${version}`);

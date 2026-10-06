@@ -1,0 +1,10 @@
+{
+  "name": "briscola",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline pass-and-play Briscola for 2-4 players on one phone, with regional Italian decks.",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.js"
+  }
+}
