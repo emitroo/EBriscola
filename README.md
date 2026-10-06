@@ -19,7 +19,7 @@ Both phones must load the page from a website. A local file can't use the camera
 | Host | Private repo | Setup |
 | --- | --- | --- |
 | **Cloudflare Pages** | Free | dash.cloudflare.com → Workers & Pages → Create → Pages → Connect to Git → this repo. Build command `npm run site`, output directory `_site`. |
-| **GitHub Pages** | Needs a paid plan (free for public repos) | Repo Settings → Pages → Source: **GitHub Actions**. The included workflow tests, builds and deploys on every push. |
+| **GitHub Pages** | Needs a paid plan (free for public repos) | Repo Settings → Pages → Source: **Deploy from a branch**, this branch, `/ (root)`. The built `index.html` is committed, so every push redeploys. Live at https://emitroo.github.io/Briscola/ |
 
 Then on each phone, open the URL once and install it: Chrome → menu → **Install app**; Safari → Share → **Add to Home Screen**. After that it opens offline.
 

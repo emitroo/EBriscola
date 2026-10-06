@@ -1,0 +1,25 @@
+name: Test
+
+# GitHub Pages serves this branch directly (Settings -> Pages -> Deploy from a branch, / root),
+# so this workflow only checks that the rules tests pass and the committed build is current.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+      - run: npm run build
+      - name: Check committed build is up to date
+        run: git diff --exit-code -- index.html sw.js
