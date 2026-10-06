@@ -34,15 +34,9 @@ jobs:
           curl -sf http://localhost:8765/ > /dev/null
       - name: Online, direct connection (2 phones)
         run: node test/e2e/two-phones.js online
-      - name: Online, relay fallback as on mobile data (2 phones)
-        if: always()
-        run: node test/e2e/two-phones.js online relay
       - name: Online lobby, host + 3 guests join by code
         if: always()
         run: node test/e2e/lobby-online.js
-      - name: Online lobby via relay, host + 3 guests
-        if: always()
-        run: node test/e2e/lobby-online.js relay
       - name: Online reconnect (drop, auto-rejoin, reload + rejoin)
         if: always()
         run: node test/e2e/reconnect.js online

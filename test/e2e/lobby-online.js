@@ -1,10 +1,8 @@
 // One host, three guests join the online lobby by code; seats fill automatically up to 4 players.
-// Usage: node lobby-online.js [relay]
 const L = require('./lib');
 (async () => {
   const params = {};
   if (process.env.BROKER) params.broker = process.env.BROKER;
-  if (process.argv[2] === 'relay') params.p2p = '0';
   const b = await L.launch();
   const host = await L.phone(b, 'Pixel 7', params);
   const code = await L.hostOnline(host, 'Marco');

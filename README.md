@@ -34,7 +34,9 @@ In both multiplayer modes one person hosts. Their phone runs the game and deals;
 2. **Everyone else:** open the game → Online → **Join with a code**, type your name and the code, tap **Join**. Or scan the host's QR with the phone camera, which opens the game with the code filled in.
 3. Joined players fill the seats automatically (up to 4). The host can switch any seat to a CPU, then taps **Start the game**.
 
-Connection setup goes through the free public PeerJS server (0.peerjs.com). The phones then try to talk directly; if a mobile network blocks that, the game automatically relays its (small) messages through the same server instead, so it still works on mobile data. If someone's connection drops, their phone rejoins by itself; after closing the app, opening it again shows the join screen with the last code filled in.
+Connection setup goes through the free public PeerJS server (0.peerjs.com); game traffic then goes directly between the phones. If someone's connection drops, their phone rejoins by itself; after closing the app, opening it again shows the join screen with the last code filled in.
+
+**Mobile data:** a direct connection works on many networks, but some mobile networks block it when both phones are on mobile data. The fix is a relay (TURN) server. Make a free account at metered.ca (free plan), create TURN credentials, and paste the ICE servers settings it shows into the host's lobby under *Players on mobile data can't connect?*. Only the host needs this. Alternatively, one phone joins Wi-Fi, or you use the Nearby mode on a hotspot.
 
 ### Nearby, no internet (QR codes)
 

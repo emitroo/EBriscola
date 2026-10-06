@@ -1,7 +1,9 @@
 // Can two peers connect when forced through a TURN relay (iceTransportPolicy: 'relay')?
 // Prints the relay candidates gathered and whether the data channel opened.
 const L = require('./lib');
-const ICE = JSON.parse(process.env.TURN_JSON || JSON.stringify([{ urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turn:openrelay.metered.ca:443?transport=tcp'], username: 'openrelayproject', credential: 'openrelayproject' }]));
+// Usage: TURN_JSON='[{"urls":["turn:host:80"],"username":"u","credential":"p"}]' node turn-probe.js
+if (!process.env.TURN_JSON) { console.log('Set TURN_JSON to the relay servers to test.'); process.exit(2); }
+const ICE = JSON.parse(process.env.TURN_JSON);
 (async () => {
   const b = await L.launch();
   const p = await (await b.newContext()).newPage();

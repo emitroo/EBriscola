@@ -360,3 +360,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .lobby-seat .nm.muted { color: var(--ink-soft); font-weight: 400; font-style: italic; }
 .seat-ctrl .sdot { flex: none; }
 .btn[disabled] { opacity: 0.6; cursor: default; }
+
+.relay-box { border-top: 1px solid var(--paper-2); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.relay-box summary { cursor: pointer; font-size: 14px; color: var(--wine); font-weight: 600; }
+.relay-box > * + * { margin-top: 8px; }
+.relay-box textarea { width: 100%; min-width: 0; border: 1.5px solid var(--paper-2); background: #fffdf7; border-radius: 9px; padding: 9px 10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--ink); resize: vertical; }

@@ -377,6 +377,11 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .seat-ctrl .sdot { flex: none; }
 .btn[disabled] { opacity: 0.6; cursor: default; }
 
+.relay-box { border-top: 1px solid var(--paper-2); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.relay-box summary { cursor: pointer; font-size: 14px; color: var(--wine); font-weight: 600; }
+.relay-box > * + * { margin-top: 8px; }
+.relay-box textarea { width: 100%; min-width: 0; border: 1.5px solid var(--paper-2); background: #fffdf7; border-radius: 9px; padding: 9px 10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--ink); resize: vertical; }
+
 body { touch-action: manipulation; }
 </style>
 </head>
@@ -1339,7 +1344,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     paste_host: 'Paste the host code', use_code: 'Use code', your_reply: 'Your reply code',
     room_fail: 'No game found with that code. Check it with the host.',
     broker_fail: 'Cannot reach the matchmaking server. Use QR pairing instead: it works offline.',
-    p2p_fail: 'Found the game but could not connect directly. Put both phones on the same Wi-Fi or hotspot, or use QR pairing.',
+    p2p_fail: 'Found the game but the phones could not connect. On mobile data, the host can add a relay server in the lobby (see “Players on mobile data can’t connect?”), or join the same Wi-Fi.',
     lobby_title: 'Connected to {name}', lobby_wait: 'Waiting for {name} to deal.', leave: 'Leave game',
     seats_title: 'Seats', you_tag: 'this phone',
     lost: 'Connection lost.', reconnecting: 'Reconnecting…',
@@ -1382,7 +1387,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     paste_host: 'Incolla il codice di chi ospita', use_code: 'Usa il codice', your_reply: 'Il tuo codice di risposta',
     room_fail: 'Nessuna partita con questo codice. Controllalo con chi ospita.',
     broker_fail: 'Server di collegamento irraggiungibile. Usa il QR: funziona offline.',
-    p2p_fail: 'Partita trovata ma connessione diretta non riuscita. Metti i telefoni sulla stessa Wi-Fi o hotspot, oppure usa il QR.',
+    p2p_fail: 'Partita trovata ma i telefoni non riescono a collegarsi. Con i dati mobili, chi ospita può aggiungere un server relay nella stanza, oppure collegatevi alla stessa Wi-Fi.',
     lobby_title: 'Connesso a {name}', lobby_wait: 'Si aspetta che {name} distribuisca.', leave: 'Esci dalla partita',
     seats_title: 'Posti', you_tag: 'questo telefono',
     lost: 'Connessione persa.', reconnecting: 'Riconnessione…',
@@ -1457,6 +1462,20 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     repair_hint: 'Chiedi a chi ospita di toccare Aggiungi un telefono, poi scansiona di nuovo.', lobby: 'Stanza', joining: 'Ingresso…',
     players_n: '{n} giocatori', you: 'tu',
   });
+
+  Object.assign(en, {
+    relay_t: 'Players on mobile data can’t connect?',
+    relay_d: 'Some mobile networks block direct connections between phones. A relay (TURN) server fixes that. Make a free account at metered.ca, create TURN credentials, and paste the ICE servers settings it shows here. Only the host needs this.',
+    relay_save: 'Save relay', relay_ok: 'Relay saved ({n} server addresses). New connections will use it.',
+    relay_bad: 'No TURN address with a username and credential found in that text.',
+  });
+
+  Object.assign(it, {
+    relay_t: 'Chi usa i dati mobili non riesce a collegarsi?',
+    relay_d: 'Alcune reti mobili bloccano le connessioni dirette tra telefoni. Un server relay (TURN) risolve il problema. Crea un account gratuito su metered.ca, genera le credenziali TURN e incolla qui le impostazioni ICE servers che mostra. Serve solo a chi ospita.',
+    relay_save: 'Salva relay', relay_ok: 'Relay salvato ({n} indirizzi). Le nuove connessioni lo useranno.',
+    relay_bad: 'Nel testo non c’è un indirizzo TURN con nome utente e credenziale.',
+  });
   root.BriscolaI18n = { en, it };
 })(typeof self !== 'undefined' ? self : this);
 
@@ -1476,6 +1495,18 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   const PROTOCOL = 1;
   const DEFAULT_BROKER = 'wss://0.peerjs.com/peerjs?key=peerjs';
   const STUN = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }];
+  const ONLINE_ICE = STUN;
+
+  /** Pull TURN server details out of whatever a provider shows (JSON, or a JavaScript iceServers snippet).
+   *  Returns RTCIceServer entries, or null if no TURN URL with credentials was found. */
+  function parseIceConfig(text) {
+    text = String(text || '');
+    const urls = text.match(/turns?:[^\s"',\]\}]+/g);
+    const user = /username["']?\s*[:=]\s*["']([^"']+)["']/.exec(text);
+    const cred = /credential["']?\s*[:=]\s*["']([^"']+)["']/.exec(text);
+    if (!urls || !user || !cred) return null;
+    return [{ urls: Array.from(new Set(urls)), username: user[1], credential: cred[1] }];
+  }
 
   // ---------- compact codes for QR / copy-paste ----------
   const b64url = {
@@ -1556,7 +1587,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       this.open = false;
       this.closed = false;
       this.lastSeen = Date.now();
-      this.pc.onicecandidate = (e) => { if (e.candidate && this.trickle) this.emit('candidate', e.candidate.toJSON()); };
+      this.pc.onicecandidate = (e) => { if (e.candidate && e.candidate.candidate && this.trickle) this.emit('candidate', e.candidate); };
       this.pc.onconnectionstatechange = () => {
         const s = this.pc.connectionState;
         if (s === 'failed' || s === 'closed') this.close('pc-' + s);
@@ -1643,40 +1674,20 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     }
   }
 
-  // ---------- fallback: game messages relayed through the signalling server ----------
-  // Used when the phones cannot reach each other directly (common between two phones on mobile data).
-  // Same interface as Link. Messages ride inside CANDIDATE envelopes, which the server forwards unchanged.
-  class RelayLink {
-    constructor(broker, peer) {
-      this.broker = broker;
-      this.peer = peer;
-      this.handlers = {};
-      this.relay = true;
-      this.open = true;
-      this.closed = false;
-      startKeepalive(this);
-    }
-    on(ev, fn) { this.handlers[ev] = fn; return this; }
-    emit(ev, a, b) { const f = this.handlers[ev]; if (f) { try { f(a, b); } catch (e) { console.error(e); } } }
-    send(m) {
-      if (this.closed || !this.broker.ws || this.broker.ws.readyState !== 1) return false;
-      this.broker.send('CANDIDATE', this.peer, { r: m });
-      return true;
-    }
-    receive(m) {
-      this.lastSeen = Date.now();
-      if (m && m.t !== 'ping') this.emit('message', m);
-    }
-    whenOpen() { return Promise.resolve(); }
-    close(reason) {
-      if (this.closed) return;
-      if (reason !== 'peer-closed') this.send({ t: 'relay-close' });
-      this.closed = true;
-      this.open = false;
-      clearInterval(this.pingTimer);
-      this.emit('close', reason);
-    }
-  }
+  // ---------- signalling message shapes ----------
+  // The public PeerJS server only relays messages shaped like the official PeerJS client's, and drops the
+  // connection of anyone sending anything else. These builders produce exactly those shapes.
+  const signal = {
+    connectionId: () => 'dc_' + Math.random().toString(36).slice(2, 12),
+    offer: (sdp, connectionId, metadata) => ({
+      sdp: { type: 'offer', sdp }, type: 'data', connectionId, browser: 'chrome', label: connectionId,
+      reliable: true, serialization: 'json', metadata,
+    }),
+    answer: (sdp, connectionId) => ({ sdp: { type: 'answer', sdp }, type: 'data', connectionId, browser: 'chrome' }),
+    candidate: (c, connectionId) => ({
+      candidate: { candidate: c.candidate, sdpMid: c.sdpMid, sdpMLineIndex: c.sdpMLineIndex }, type: 'data', connectionId,
+    }),
+  };
 
   // ---------- PeerJS-compatible signalling client ----------
   class Broker {
@@ -1804,11 +1815,6 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   const normaliseRoom = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
   const roomPeerId = (code) => `briscola-${code}`;
 
-  /** Test switch: ?p2p=0 skips the direct connection and goes straight to the relay. */
-  function directAllowed() {
-    try { return new URLSearchParams(location.search).get('p2p') !== '0'; } catch (e) { return true; }
-  }
-
   function brokerUrl() {
     try {
       const q = new URLSearchParams(location.search).get('broker');
@@ -1818,7 +1824,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   }
 
   root.BriscolaNet = {
-    PROTOCOL, STUN, Link, RelayLink, Broker, directAllowed, pack, unpack, qrSvg, startScanner, deviceId, roomCode, normaliseRoom, roomPeerId, brokerUrl,
+    PROTOCOL, STUN, ONLINE_ICE, parseIceConfig, Link, Broker, signal, pack, unpack, qrSvg, startScanner, deviceId, roomCode, normaliseRoom, roomPeerId, brokerUrl,
     supported: () => typeof RTCPeerConnection !== 'undefined',
   };
 })(typeof self !== 'undefined' ? self : this);
@@ -1856,7 +1862,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     lobby: { n: 2, seats: [0, 1, 2, 3].map((p) => blankSeat({ open: p > 0 })) },
     hideHands: true, twoTap: true, swap: 0, partnerView: true, showScore: false,
     target: 1, speed: 'normal', sound: true,
-    myName: '', knownDevs: {}, hostMode: null, room: null, lastRoom: null,
+    myName: '', knownDevs: {}, hostMode: null, room: null, lastRoom: null, turn: '',
   };
 
   const S = { settings: JSON.parse(JSON.stringify(DEFAULTS)), session: null, savedSession: null };
@@ -1873,7 +1879,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     devices: {}, // host: dev -> { dev, name, link, online, via }
     room: null, // host, online lobby: { code, broker, status: 'opening' | 'open' | 'error', err }
     pair: null, // open QR pairing screen state
-    guest: null, // guest: { link, mode, code, hostName, status, lobby, broker }
+    guest: null, // guest: { link, mode, code, hostName, status, lobby }
     joining: false,
     lastSent: {},
   };
@@ -1906,6 +1912,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   const hosting = () => !!S.settings.hostMode;
   /** The seat configuration being edited: the lobby when hosting, the one-phone setup otherwise. */
   const src = () => (hosting() ? S.settings.lobby : S.settings);
+
+  /** ICE servers for online games: STUN, plus the host's own TURN relay if one was saved. */
+  function onlineIce() {
+    const extra = N && S.settings.turn ? N.parseIceConfig(S.settings.turn) : null;
+    return extra ? N.ONLINE_ICE.concat(extra) : N.ONLINE_ICE;
+  }
 
   const cfg = () => S.session.cfg;
   const G = () => S.session.G;
@@ -2168,6 +2180,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
           <div class="qr-box small">${roomQrCache.svg}</div><p class="hint">${t('invite_qr')}</p>
           <button class="btn btn-ghost" data-act="share-link" id="share-btn">${t('share')}</button></div>`;
       }
+      const relay = S.settings.turn ? N.parseIceConfig(S.settings.turn) : null;
+      body += `<details class="relay-box"${S.settings.turn && !relay ? ' open' : ''}><summary>${t('relay_t')}</summary>
+        <p class="hint">${t('relay_d')}</p>
+        <textarea id="turn-text" rows="4" spellcheck="false" placeholder="turn:… username … credential …">${esc(S.settings.turn)}</textarea>
+        <div class="btn-row"><button class="btn btn-ghost" data-act="turn-clear">${t('remove')}</button><button class="btn btn-primary" data-act="turn-save">${t('relay_save')}</button></div>
+        <p class="pair-status" id="turn-status">${relay ? esc(t('relay_ok', { n: relay[0].urls.length })) : S.settings.turn ? esc(t('relay_bad')) : ''}</p></details>`;
       return `<div class="panel"><div class="panel-head"><h2>${t('invite_t')}</h2><span class="mode-badge">${ICON.globe}${t('badge_online')}</span></div>${body}</div>`;
     }
     return `<div class="panel"><div class="panel-head"><h2>${t('add_t')}</h2><span class="mode-badge">${ICON.wifi}${t('badge_nearby')}</span></div>
@@ -2851,39 +2869,26 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     net.room = { code, status: 'open', broker };
     S.settings.room = code;
     persist();
-    const pending = {}, relays = {};
+    const pending = {};
     broker.on('message', async (m) => {
-      if (m.type === 'CANDIDATE' && m.payload && m.payload.r) {
-        // Relayed game traffic from a phone that could not connect directly.
-        let rl = relays[m.src];
-        if (m.payload.r.t === 'relay-close') { if (rl) { rl.close('peer-closed'); delete relays[m.src]; } return; }
-        if (!rl || rl.closed) {
-          rl = relays[m.src] = new N.RelayLink(broker, m.src);
-          adoptLink(rl, 'room');
-          if (pending[m.src]) pending[m.src].close('relay');
-        }
-        rl.receive(m.payload.r);
-      } else if (m.type === 'OFFER' && m.payload && m.payload.sdp) {
-        if (m.payload.v !== N.PROTOCOL) return;
-        const link = new N.Link({ trickle: true, ice: N.STUN });
+      const pl = m.payload;
+      if (m.type === 'OFFER' && pl && pl.sdp && pl.sdp.sdp) {
+        if (!pl.metadata || pl.metadata.v !== N.PROTOCOL) return;
+        const link = new N.Link({ trickle: true, ice: onlineIce() });
         pending[m.src] = link;
-        link.on('candidate', (c) => broker.send('CANDIDATE', m.src, { c }));
+        link.on('candidate', (c) => broker.send('CANDIDATE', m.src, N.signal.candidate(c, pl.connectionId)));
         adoptLink(link, 'room');
         try {
-          const sdp = await link.createAnswer(m.payload.sdp);
-          broker.send('ANSWER', m.src, { sdp });
+          const sdp = await link.createAnswer(pl.sdp.sdp);
+          broker.send('ANSWER', m.src, N.signal.answer(sdp, pl.connectionId));
           await link.whenOpen(30000);
         } catch (e) { link.close('failed'); }
         if (pending[m.src] === link) delete pending[m.src];
-      } else if (m.type === 'CANDIDATE' && pending[m.src] && m.payload && m.payload.c) {
-        pending[m.src].addCandidate(m.payload.c);
-      } else if (m.type === 'LEAVE' && relays[m.src]) {
-        relays[m.src].close('peer-closed');
-        delete relays[m.src];
+      } else if (m.type === 'CANDIDATE' && pending[m.src] && pl && pl.candidate) {
+        pending[m.src].addCandidate(pl.candidate);
       }
     });
     broker.on('drop', () => {
-      Object.values(relays).forEach((rl) => rl.close('peer-closed'));
       if (net.room && net.room.code === code) setTimeout(() => { if (net.room && net.room.code === code) openRoom(code, 1); }, 2000);
     });
     onDevicesChanged();
@@ -3075,8 +3080,8 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   }
 
   // ================= ONLINE: JOIN WITH A CODE =================
-  /** Join an online lobby. Tries a direct connection first and falls back to relaying through the
-   *  signalling server, so two phones on mobile data still connect. With `silent`, used for reconnection. */
+  /** Join an online lobby by code. The connection is direct when possible and goes through the TURN
+   *  relay when the networks block that. With `silent`, used for automatic reconnection. */
   async function joinRoom(code, silent) {
     code = N.normaliseRoom(code);
     const status = (k) => { if (!silent) { ui.joinStatus = t(k); pairSet('pj-room-status', esc(ui.joinStatus)); } };
@@ -3091,70 +3096,51 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     const broker = new N.Broker(`bg-${DEV}-${Math.random().toString(36).slice(2, 6)}`, N.brokerUrl());
     try { await broker.connect(8000); } catch (e) { status('broker_fail'); return done(false); }
 
-    let link = null, relay = null, answered = false, expired = false, relayAck = null;
+    const cid = N.signal.connectionId();
+    const link = new N.Link({ trickle: true, ice: onlineIce() });
+    let answered = false, expired = false;
+    link.on('candidate', (c) => broker.send('CANDIDATE', hostId, N.signal.candidate(c, cid)));
     broker.on('message', (m) => {
-      if (m.type === 'EXPIRE') { expired = true; if (link) link.close('expired'); return; }
-      if (m.src !== hostId) return;
-      if (m.type === 'CANDIDATE' && m.payload && m.payload.r) {
-        if (!relay) return;
-        if (m.payload.r.t === 'relay-close') relay.close('peer-closed');
-        else { relay.receive(m.payload.r); if (relayAck) relayAck(); }
-      } else if (m.type === 'ANSWER' && m.payload && link) {
+      if (m.type === 'EXPIRE') { expired = true; link.close('expired'); return; }
+      if (m.src !== hostId || !m.payload) return;
+      if (m.type === 'ANSWER' && m.payload.sdp && m.payload.sdp.sdp) {
         answered = true;
-        link.acceptAnswer(m.payload.sdp).catch(() => link.close('bad-answer'));
-      } else if (m.type === 'CANDIDATE' && m.payload && m.payload.c && link) {
-        link.addCandidate(m.payload.c);
-      } else if (m.type === 'LEAVE' && relay) relay.close('peer-closed');
-    });
-
-    // 1. Direct connection.
-    if (N.directAllowed()) {
-      link = new N.Link({ trickle: true, ice: N.STUN });
-      link.on('candidate', (c) => broker.send('CANDIDATE', hostId, { c }));
-      try {
-        const sdp = await link.createOffer();
-        broker.send('OFFER', hostId, { sdp, v: N.PROTOCOL, dev: DEV });
-        await link.whenOpen(9000);
-        broker.close();
-        S.settings.lastRoom = code;
-        persist();
-        becomeGuest(link, 'room', null, code);
-        return done(true);
-      } catch (e) {
-        link.close('fallback');
-        link = null;
-        // No answer at all means nobody is hosting that code.
-        if (expired || !answered) { broker.close(); status('room_fail'); return done(false); }
+        link.acceptAnswer(m.payload.sdp.sdp).catch(() => link.close('bad-answer'));
+      } else if (m.type === 'CANDIDATE' && m.payload.candidate) {
+        link.addCandidate(m.payload.candidate);
       }
+    });
+    try {
+      const sdp = await link.createOffer();
+      broker.send('OFFER', hostId, N.signal.offer(sdp, cid, { v: N.PROTOCOL, dev: DEV }));
+      // Long enough for a connection through the TURN relay, which takes a few extra round trips.
+      await link.whenOpen(20000);
+    } catch (e) {
+      link.close('failed');
+      broker.close();
+      // No answer at all means nobody is hosting that code.
+      status(expired || !answered ? 'room_fail' : 'p2p_fail');
+      return done(false);
     }
-
-    // 2. Relay through the signalling server.
-    relay = new N.RelayLink(broker, hostId);
-    const welcomed = new Promise((res) => { relayAck = res; });
-    relay.send({ t: 'hello', v: N.PROTOCOL, dev: DEV, name: S.settings.myName });
-    const ok = await Promise.race([welcomed.then(() => true), sleep(8000).then(() => false)]);
-    relayAck = null;
-    if (!ok || expired) { relay.close('failed'); broker.close(); status(expired ? 'room_fail' : 'p2p_fail'); return done(false); }
+    broker.close();
     S.settings.lastRoom = code;
     persist();
-    becomeGuest(relay, 'room', null, code, broker);
+    becomeGuest(link, 'room', null, code);
     return done(true);
   }
 
   // ================= GUEST =================
-  function becomeGuest(link, mode, hostNm, code, broker) {
+  function becomeGuest(link, mode, hostNm, code) {
     if (!isGuest()) {
       S.savedSession = S.session;
       stopFlow();
     }
-    if (net.guest && net.guest.broker && net.guest.broker !== broker) net.guest.broker.close();
     net.role = 'guest';
     const prevLobby = net.guest && net.guest.lobby;
-    net.guest = { link, mode, code, broker: broker || null, hostName: hostNm || (net.guest && net.guest.hostName) || '', status: 'online', lobby: prevLobby || null };
+    net.guest = { link, mode, code, hostName: hostNm || (net.guest && net.guest.hostName) || '', status: 'online', lobby: prevLobby || null };
     const gst = net.guest;
     link.on('message', onGuestMessage);
     link.on('close', () => { if (net.guest === gst && gst.link === link) onGuestLost(); });
-    if (broker) broker.on('drop', () => { if (net.guest === gst && gst.link === link) link.close('broker-drop'); });
     // Say hello until the host answers: the first message on a fresh channel is occasionally lost.
     const hello = () => {
       if (net.guest !== gst || gst.link !== link || gst.welcomed || link.closed) return;
@@ -3172,7 +3158,6 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     gst.status = 'lost';
     gst.link = null;
     gst.welcomed = false;
-    if (gst.broker) { gst.broker.close(); gst.broker = null; }
     ui.sent = false;
     if (!$('#setup').hidden) renderSetup(); else render();
     if (gst.mode === 'room') retryRoom(gst);
@@ -3190,7 +3175,6 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     const gst = net.guest;
     S.settings.lastRoom = null;
     if (gst && gst.link) { gst.link.send({ t: 'leave' }); const l = gst.link; setTimeout(() => l.close('left'), 150); }
-    if (gst && gst.broker) { const b = gst.broker; setTimeout(() => b.close(), 300); }
     net.role = null;
     net.guest = null;
     S.session = S.savedSession;
@@ -3386,6 +3370,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       case 'pair-paste': { const P = net.pair; const ta = $('#pq-paste'); if (P && ta && ta.value.trim()) { if (P.step !== 2) hostPairStep(2); hostGotReply(P, ta.value); } return; }
       case 'copy': copyFrom(v); el.textContent = t('copied'); return;
       case 'room-retry': openRoom(S.settings.room); return;
+      case 'turn-save': {
+        const ta = $('#turn-text');
+        S.settings.turn = ta ? ta.value.trim() : '';
+        persist(); renderSetup(); return;
+      }
+      case 'turn-clear': S.settings.turn = ''; persist(); renderSetup(); return;
       case 'share-link': shareInvite(el); return;
       case 'dev-remove': removeDevice(v); return;
       case 'join-paste': { const P = net.pair; const ta = $('#pj-paste'); if (P && ta && ta.value.trim()) guestGotOffer(P, ta.value); return; }
@@ -3475,7 +3465,16 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 </script>
 <script>
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  // A new version activates in the background; reload into it unless a game is on screen.
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    const game = document.getElementById('game');
+    if (!hadController || reloading || (game && !game.hidden)) return;
+    reloading = true;
+    location.reload();
+  });
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').then((r) => r.update()).catch(() => {}));
 }
 </script>
 </body>

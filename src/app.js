@@ -30,7 +30,7 @@
     lobby: { n: 2, seats: [0, 1, 2, 3].map((p) => blankSeat({ open: p > 0 })) },
     hideHands: true, twoTap: true, swap: 0, partnerView: true, showScore: false,
     target: 1, speed: 'normal', sound: true,
-    myName: '', knownDevs: {}, hostMode: null, room: null, lastRoom: null,
+    myName: '', knownDevs: {}, hostMode: null, room: null, lastRoom: null, turn: '',
   };
 
   const S = { settings: JSON.parse(JSON.stringify(DEFAULTS)), session: null, savedSession: null };
@@ -47,7 +47,7 @@
     devices: {}, // host: dev -> { dev, name, link, online, via }
     room: null, // host, online lobby: { code, broker, status: 'opening' | 'open' | 'error', err }
     pair: null, // open QR pairing screen state
-    guest: null, // guest: { link, mode, code, hostName, status, lobby, broker }
+    guest: null, // guest: { link, mode, code, hostName, status, lobby }
     joining: false,
     lastSent: {},
   };
@@ -80,6 +80,12 @@
   const hosting = () => !!S.settings.hostMode;
   /** The seat configuration being edited: the lobby when hosting, the one-phone setup otherwise. */
   const src = () => (hosting() ? S.settings.lobby : S.settings);
+
+  /** ICE servers for online games: STUN, plus the host's own TURN relay if one was saved. */
+  function onlineIce() {
+    const extra = N && S.settings.turn ? N.parseIceConfig(S.settings.turn) : null;
+    return extra ? N.ONLINE_ICE.concat(extra) : N.ONLINE_ICE;
+  }
 
   const cfg = () => S.session.cfg;
   const G = () => S.session.G;
@@ -342,6 +348,12 @@
           <div class="qr-box small">${roomQrCache.svg}</div><p class="hint">${t('invite_qr')}</p>
           <button class="btn btn-ghost" data-act="share-link" id="share-btn">${t('share')}</button></div>`;
       }
+      const relay = S.settings.turn ? N.parseIceConfig(S.settings.turn) : null;
+      body += `<details class="relay-box"${S.settings.turn && !relay ? ' open' : ''}><summary>${t('relay_t')}</summary>
+        <p class="hint">${t('relay_d')}</p>
+        <textarea id="turn-text" rows="4" spellcheck="false" placeholder="turn:… username … credential …">${esc(S.settings.turn)}</textarea>
+        <div class="btn-row"><button class="btn btn-ghost" data-act="turn-clear">${t('remove')}</button><button class="btn btn-primary" data-act="turn-save">${t('relay_save')}</button></div>
+        <p class="pair-status" id="turn-status">${relay ? esc(t('relay_ok', { n: relay[0].urls.length })) : S.settings.turn ? esc(t('relay_bad')) : ''}</p></details>`;
       return `<div class="panel"><div class="panel-head"><h2>${t('invite_t')}</h2><span class="mode-badge">${ICON.globe}${t('badge_online')}</span></div>${body}</div>`;
     }
     return `<div class="panel"><div class="panel-head"><h2>${t('add_t')}</h2><span class="mode-badge">${ICON.wifi}${t('badge_nearby')}</span></div>
@@ -1025,39 +1037,26 @@
     net.room = { code, status: 'open', broker };
     S.settings.room = code;
     persist();
-    const pending = {}, relays = {};
+    const pending = {};
     broker.on('message', async (m) => {
-      if (m.type === 'CANDIDATE' && m.payload && m.payload.r) {
-        // Relayed game traffic from a phone that could not connect directly.
-        let rl = relays[m.src];
-        if (m.payload.r.t === 'relay-close') { if (rl) { rl.close('peer-closed'); delete relays[m.src]; } return; }
-        if (!rl || rl.closed) {
-          rl = relays[m.src] = new N.RelayLink(broker, m.src);
-          adoptLink(rl, 'room');
-          if (pending[m.src]) pending[m.src].close('relay');
-        }
-        rl.receive(m.payload.r);
-      } else if (m.type === 'OFFER' && m.payload && m.payload.sdp) {
-        if (m.payload.v !== N.PROTOCOL) return;
-        const link = new N.Link({ trickle: true, ice: N.STUN });
+      const pl = m.payload;
+      if (m.type === 'OFFER' && pl && pl.sdp && pl.sdp.sdp) {
+        if (!pl.metadata || pl.metadata.v !== N.PROTOCOL) return;
+        const link = new N.Link({ trickle: true, ice: onlineIce() });
         pending[m.src] = link;
-        link.on('candidate', (c) => broker.send('CANDIDATE', m.src, { c }));
+        link.on('candidate', (c) => broker.send('CANDIDATE', m.src, N.signal.candidate(c, pl.connectionId)));
         adoptLink(link, 'room');
         try {
-          const sdp = await link.createAnswer(m.payload.sdp);
-          broker.send('ANSWER', m.src, { sdp });
+          const sdp = await link.createAnswer(pl.sdp.sdp);
+          broker.send('ANSWER', m.src, N.signal.answer(sdp, pl.connectionId));
           await link.whenOpen(30000);
         } catch (e) { link.close('failed'); }
         if (pending[m.src] === link) delete pending[m.src];
-      } else if (m.type === 'CANDIDATE' && pending[m.src] && m.payload && m.payload.c) {
-        pending[m.src].addCandidate(m.payload.c);
-      } else if (m.type === 'LEAVE' && relays[m.src]) {
-        relays[m.src].close('peer-closed');
-        delete relays[m.src];
+      } else if (m.type === 'CANDIDATE' && pending[m.src] && pl && pl.candidate) {
+        pending[m.src].addCandidate(pl.candidate);
       }
     });
     broker.on('drop', () => {
-      Object.values(relays).forEach((rl) => rl.close('peer-closed'));
       if (net.room && net.room.code === code) setTimeout(() => { if (net.room && net.room.code === code) openRoom(code, 1); }, 2000);
     });
     onDevicesChanged();
@@ -1249,8 +1248,8 @@
   }
 
   // ================= ONLINE: JOIN WITH A CODE =================
-  /** Join an online lobby. Tries a direct connection first and falls back to relaying through the
-   *  signalling server, so two phones on mobile data still connect. With `silent`, used for reconnection. */
+  /** Join an online lobby by code. The connection is direct when possible and goes through the TURN
+   *  relay when the networks block that. With `silent`, used for automatic reconnection. */
   async function joinRoom(code, silent) {
     code = N.normaliseRoom(code);
     const status = (k) => { if (!silent) { ui.joinStatus = t(k); pairSet('pj-room-status', esc(ui.joinStatus)); } };
@@ -1265,70 +1264,51 @@
     const broker = new N.Broker(`bg-${DEV}-${Math.random().toString(36).slice(2, 6)}`, N.brokerUrl());
     try { await broker.connect(8000); } catch (e) { status('broker_fail'); return done(false); }
 
-    let link = null, relay = null, answered = false, expired = false, relayAck = null;
+    const cid = N.signal.connectionId();
+    const link = new N.Link({ trickle: true, ice: onlineIce() });
+    let answered = false, expired = false;
+    link.on('candidate', (c) => broker.send('CANDIDATE', hostId, N.signal.candidate(c, cid)));
     broker.on('message', (m) => {
-      if (m.type === 'EXPIRE') { expired = true; if (link) link.close('expired'); return; }
-      if (m.src !== hostId) return;
-      if (m.type === 'CANDIDATE' && m.payload && m.payload.r) {
-        if (!relay) return;
-        if (m.payload.r.t === 'relay-close') relay.close('peer-closed');
-        else { relay.receive(m.payload.r); if (relayAck) relayAck(); }
-      } else if (m.type === 'ANSWER' && m.payload && link) {
+      if (m.type === 'EXPIRE') { expired = true; link.close('expired'); return; }
+      if (m.src !== hostId || !m.payload) return;
+      if (m.type === 'ANSWER' && m.payload.sdp && m.payload.sdp.sdp) {
         answered = true;
-        link.acceptAnswer(m.payload.sdp).catch(() => link.close('bad-answer'));
-      } else if (m.type === 'CANDIDATE' && m.payload && m.payload.c && link) {
-        link.addCandidate(m.payload.c);
-      } else if (m.type === 'LEAVE' && relay) relay.close('peer-closed');
-    });
-
-    // 1. Direct connection.
-    if (N.directAllowed()) {
-      link = new N.Link({ trickle: true, ice: N.STUN });
-      link.on('candidate', (c) => broker.send('CANDIDATE', hostId, { c }));
-      try {
-        const sdp = await link.createOffer();
-        broker.send('OFFER', hostId, { sdp, v: N.PROTOCOL, dev: DEV });
-        await link.whenOpen(9000);
-        broker.close();
-        S.settings.lastRoom = code;
-        persist();
-        becomeGuest(link, 'room', null, code);
-        return done(true);
-      } catch (e) {
-        link.close('fallback');
-        link = null;
-        // No answer at all means nobody is hosting that code.
-        if (expired || !answered) { broker.close(); status('room_fail'); return done(false); }
+        link.acceptAnswer(m.payload.sdp.sdp).catch(() => link.close('bad-answer'));
+      } else if (m.type === 'CANDIDATE' && m.payload.candidate) {
+        link.addCandidate(m.payload.candidate);
       }
+    });
+    try {
+      const sdp = await link.createOffer();
+      broker.send('OFFER', hostId, N.signal.offer(sdp, cid, { v: N.PROTOCOL, dev: DEV }));
+      // Long enough for a connection through the TURN relay, which takes a few extra round trips.
+      await link.whenOpen(20000);
+    } catch (e) {
+      link.close('failed');
+      broker.close();
+      // No answer at all means nobody is hosting that code.
+      status(expired || !answered ? 'room_fail' : 'p2p_fail');
+      return done(false);
     }
-
-    // 2. Relay through the signalling server.
-    relay = new N.RelayLink(broker, hostId);
-    const welcomed = new Promise((res) => { relayAck = res; });
-    relay.send({ t: 'hello', v: N.PROTOCOL, dev: DEV, name: S.settings.myName });
-    const ok = await Promise.race([welcomed.then(() => true), sleep(8000).then(() => false)]);
-    relayAck = null;
-    if (!ok || expired) { relay.close('failed'); broker.close(); status(expired ? 'room_fail' : 'p2p_fail'); return done(false); }
+    broker.close();
     S.settings.lastRoom = code;
     persist();
-    becomeGuest(relay, 'room', null, code, broker);
+    becomeGuest(link, 'room', null, code);
     return done(true);
   }
 
   // ================= GUEST =================
-  function becomeGuest(link, mode, hostNm, code, broker) {
+  function becomeGuest(link, mode, hostNm, code) {
     if (!isGuest()) {
       S.savedSession = S.session;
       stopFlow();
     }
-    if (net.guest && net.guest.broker && net.guest.broker !== broker) net.guest.broker.close();
     net.role = 'guest';
     const prevLobby = net.guest && net.guest.lobby;
-    net.guest = { link, mode, code, broker: broker || null, hostName: hostNm || (net.guest && net.guest.hostName) || '', status: 'online', lobby: prevLobby || null };
+    net.guest = { link, mode, code, hostName: hostNm || (net.guest && net.guest.hostName) || '', status: 'online', lobby: prevLobby || null };
     const gst = net.guest;
     link.on('message', onGuestMessage);
     link.on('close', () => { if (net.guest === gst && gst.link === link) onGuestLost(); });
-    if (broker) broker.on('drop', () => { if (net.guest === gst && gst.link === link) link.close('broker-drop'); });
     // Say hello until the host answers: the first message on a fresh channel is occasionally lost.
     const hello = () => {
       if (net.guest !== gst || gst.link !== link || gst.welcomed || link.closed) return;
@@ -1346,7 +1326,6 @@
     gst.status = 'lost';
     gst.link = null;
     gst.welcomed = false;
-    if (gst.broker) { gst.broker.close(); gst.broker = null; }
     ui.sent = false;
     if (!$('#setup').hidden) renderSetup(); else render();
     if (gst.mode === 'room') retryRoom(gst);
@@ -1364,7 +1343,6 @@
     const gst = net.guest;
     S.settings.lastRoom = null;
     if (gst && gst.link) { gst.link.send({ t: 'leave' }); const l = gst.link; setTimeout(() => l.close('left'), 150); }
-    if (gst && gst.broker) { const b = gst.broker; setTimeout(() => b.close(), 300); }
     net.role = null;
     net.guest = null;
     S.session = S.savedSession;
@@ -1560,6 +1538,12 @@
       case 'pair-paste': { const P = net.pair; const ta = $('#pq-paste'); if (P && ta && ta.value.trim()) { if (P.step !== 2) hostPairStep(2); hostGotReply(P, ta.value); } return; }
       case 'copy': copyFrom(v); el.textContent = t('copied'); return;
       case 'room-retry': openRoom(S.settings.room); return;
+      case 'turn-save': {
+        const ta = $('#turn-text');
+        S.settings.turn = ta ? ta.value.trim() : '';
+        persist(); renderSetup(); return;
+      }
+      case 'turn-clear': S.settings.turn = ''; persist(); renderSetup(); return;
       case 'share-link': shareInvite(el); return;
       case 'dev-remove': removeDevice(v); return;
       case 'join-paste': { const P = net.pair; const ta = $('#pj-paste'); if (P && ta && ta.value.trim()) guestGotOffer(P, ta.value); return; }

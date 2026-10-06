@@ -14,13 +14,14 @@ export BROKER="ws://localhost:9000/peerjs?key=peerjs"   # omit to use 0.peerjs.c
 
 node test/e2e/one-phone.js 4 1              # 1 human + 3 CPU on one phone
 node test/e2e/two-phones.js online          # host + guest join by code, direct connection
-node test/e2e/two-phones.js online relay    # same, forced through the relay (as on mobile data)
-node test/e2e/lobby-online.js [relay]       # host + 3 guests join by code, 4-phone hand
+node test/e2e/lobby-online.js               # host + 3 guests join by code, 4-phone hand
 node test/e2e/reconnect.js online           # drop, automatic rejoin, page reload + rejoin
 node test/e2e/two-phones.js nearby          # nearby QR pairing (text codes), full hand
 node test/e2e/reconnect.js nearby           # drop and re-pair with QR
 node test/e2e/camera-scan.js                # guest scans a real host QR through a fake camera
 node test/e2e/pair-loop.js 9                # repeated pairing, to catch intermittent failures
+node test/e2e/peerjs-probe.js               # which message shapes the signalling server accepts
+TURN_JSON='[...]' node test/e2e/turn-probe.js   # does a TURN relay work
 ```
 
 Screenshots go to `$OUT` (default: the system temp directory).

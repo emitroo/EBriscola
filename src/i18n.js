@@ -140,7 +140,7 @@
     paste_host: 'Paste the host code', use_code: 'Use code', your_reply: 'Your reply code',
     room_fail: 'No game found with that code. Check it with the host.',
     broker_fail: 'Cannot reach the matchmaking server. Use QR pairing instead: it works offline.',
-    p2p_fail: 'Found the game but could not connect directly. Put both phones on the same Wi-Fi or hotspot, or use QR pairing.',
+    p2p_fail: 'Found the game but the phones could not connect. On mobile data, the host can add a relay server in the lobby (see “Players on mobile data can’t connect?”), or join the same Wi-Fi.',
     lobby_title: 'Connected to {name}', lobby_wait: 'Waiting for {name} to deal.', leave: 'Leave game',
     seats_title: 'Seats', you_tag: 'this phone',
     lost: 'Connection lost.', reconnecting: 'Reconnecting…',
@@ -183,7 +183,7 @@
     paste_host: 'Incolla il codice di chi ospita', use_code: 'Usa il codice', your_reply: 'Il tuo codice di risposta',
     room_fail: 'Nessuna partita con questo codice. Controllalo con chi ospita.',
     broker_fail: 'Server di collegamento irraggiungibile. Usa il QR: funziona offline.',
-    p2p_fail: 'Partita trovata ma connessione diretta non riuscita. Metti i telefoni sulla stessa Wi-Fi o hotspot, oppure usa il QR.',
+    p2p_fail: 'Partita trovata ma i telefoni non riescono a collegarsi. Con i dati mobili, chi ospita può aggiungere un server relay nella stanza, oppure collegatevi alla stessa Wi-Fi.',
     lobby_title: 'Connesso a {name}', lobby_wait: 'Si aspetta che {name} distribuisca.', leave: 'Esci dalla partita',
     seats_title: 'Posti', you_tag: 'questo telefono',
     lost: 'Connessione persa.', reconnecting: 'Riconnessione…',
@@ -257,6 +257,20 @@
     back: 'Indietro', lobby_joined: 'Sei nella partita di {name}', scan_again: 'Scansiona di nuovo',
     repair_hint: 'Chiedi a chi ospita di toccare Aggiungi un telefono, poi scansiona di nuovo.', lobby: 'Stanza', joining: 'Ingresso…',
     players_n: '{n} giocatori', you: 'tu',
+  });
+
+  Object.assign(en, {
+    relay_t: 'Players on mobile data can’t connect?',
+    relay_d: 'Some mobile networks block direct connections between phones. A relay (TURN) server fixes that. Make a free account at metered.ca, create TURN credentials, and paste the ICE servers settings it shows here. Only the host needs this.',
+    relay_save: 'Save relay', relay_ok: 'Relay saved ({n} server addresses). New connections will use it.',
+    relay_bad: 'No TURN address with a username and credential found in that text.',
+  });
+
+  Object.assign(it, {
+    relay_t: 'Chi usa i dati mobili non riesce a collegarsi?',
+    relay_d: 'Alcune reti mobili bloccano le connessioni dirette tra telefoni. Un server relay (TURN) risolve il problema. Crea un account gratuito su metered.ca, genera le credenziali TURN e incolla qui le impostazioni ICE servers che mostra. Serve solo a chi ospita.',
+    relay_save: 'Salva relay', relay_ok: 'Relay salvato ({n} indirizzi). Le nuove connessioni lo useranno.',
+    relay_bad: 'Nel testo non c’è un indirizzo TURN con nome utente e credenziale.',
   });
   root.BriscolaI18n = { en, it };
 })(typeof self !== 'undefined' ? self : this);

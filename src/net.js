@@ -13,6 +13,18 @@
   const PROTOCOL = 1;
   const DEFAULT_BROKER = 'wss://0.peerjs.com/peerjs?key=peerjs';
   const STUN = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }];
+  const ONLINE_ICE = STUN;
+
+  /** Pull TURN server details out of whatever a provider shows (JSON, or a JavaScript iceServers snippet).
+   *  Returns RTCIceServer entries, or null if no TURN URL with credentials was found. */
+  function parseIceConfig(text) {
+    text = String(text || '');
+    const urls = text.match(/turns?:[^\s"',\]\}]+/g);
+    const user = /username["']?\s*[:=]\s*["']([^"']+)["']/.exec(text);
+    const cred = /credential["']?\s*[:=]\s*["']([^"']+)["']/.exec(text);
+    if (!urls || !user || !cred) return null;
+    return [{ urls: Array.from(new Set(urls)), username: user[1], credential: cred[1] }];
+  }
 
   // ---------- compact codes for QR / copy-paste ----------
   const b64url = {
@@ -93,7 +105,7 @@
       this.open = false;
       this.closed = false;
       this.lastSeen = Date.now();
-      this.pc.onicecandidate = (e) => { if (e.candidate && this.trickle) this.emit('candidate', e.candidate.toJSON()); };
+      this.pc.onicecandidate = (e) => { if (e.candidate && e.candidate.candidate && this.trickle) this.emit('candidate', e.candidate); };
       this.pc.onconnectionstatechange = () => {
         const s = this.pc.connectionState;
         if (s === 'failed' || s === 'closed') this.close('pc-' + s);
@@ -180,40 +192,20 @@
     }
   }
 
-  // ---------- fallback: game messages relayed through the signalling server ----------
-  // Used when the phones cannot reach each other directly (common between two phones on mobile data).
-  // Same interface as Link. Messages ride inside CANDIDATE envelopes, which the server forwards unchanged.
-  class RelayLink {
-    constructor(broker, peer) {
-      this.broker = broker;
-      this.peer = peer;
-      this.handlers = {};
-      this.relay = true;
-      this.open = true;
-      this.closed = false;
-      startKeepalive(this);
-    }
-    on(ev, fn) { this.handlers[ev] = fn; return this; }
-    emit(ev, a, b) { const f = this.handlers[ev]; if (f) { try { f(a, b); } catch (e) { console.error(e); } } }
-    send(m) {
-      if (this.closed || !this.broker.ws || this.broker.ws.readyState !== 1) return false;
-      this.broker.send('CANDIDATE', this.peer, { r: m });
-      return true;
-    }
-    receive(m) {
-      this.lastSeen = Date.now();
-      if (m && m.t !== 'ping') this.emit('message', m);
-    }
-    whenOpen() { return Promise.resolve(); }
-    close(reason) {
-      if (this.closed) return;
-      if (reason !== 'peer-closed') this.send({ t: 'relay-close' });
-      this.closed = true;
-      this.open = false;
-      clearInterval(this.pingTimer);
-      this.emit('close', reason);
-    }
-  }
+  // ---------- signalling message shapes ----------
+  // The public PeerJS server only relays messages shaped like the official PeerJS client's, and drops the
+  // connection of anyone sending anything else. These builders produce exactly those shapes.
+  const signal = {
+    connectionId: () => 'dc_' + Math.random().toString(36).slice(2, 12),
+    offer: (sdp, connectionId, metadata) => ({
+      sdp: { type: 'offer', sdp }, type: 'data', connectionId, browser: 'chrome', label: connectionId,
+      reliable: true, serialization: 'json', metadata,
+    }),
+    answer: (sdp, connectionId) => ({ sdp: { type: 'answer', sdp }, type: 'data', connectionId, browser: 'chrome' }),
+    candidate: (c, connectionId) => ({
+      candidate: { candidate: c.candidate, sdpMid: c.sdpMid, sdpMLineIndex: c.sdpMLineIndex }, type: 'data', connectionId,
+    }),
+  };
 
   // ---------- PeerJS-compatible signalling client ----------
   class Broker {
@@ -341,11 +333,6 @@
   const normaliseRoom = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
   const roomPeerId = (code) => `briscola-${code}`;
 
-  /** Test switch: ?p2p=0 skips the direct connection and goes straight to the relay. */
-  function directAllowed() {
-    try { return new URLSearchParams(location.search).get('p2p') !== '0'; } catch (e) { return true; }
-  }
-
   function brokerUrl() {
     try {
       const q = new URLSearchParams(location.search).get('broker');
@@ -355,7 +342,7 @@
   }
 
   root.BriscolaNet = {
-    PROTOCOL, STUN, Link, RelayLink, Broker, directAllowed, pack, unpack, qrSvg, startScanner, deviceId, roomCode, normaliseRoom, roomPeerId, brokerUrl,
+    PROTOCOL, STUN, ONLINE_ICE, parseIceConfig, Link, Broker, signal, pack, unpack, qrSvg, startScanner, deviceId, roomCode, normaliseRoom, roomPeerId, brokerUrl,
     supported: () => typeof RTCPeerConnection !== 'undefined',
   };
 })(typeof self !== 'undefined' ? self : this);

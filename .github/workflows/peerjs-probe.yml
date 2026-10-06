@@ -18,6 +18,8 @@ jobs:
         run: |
           npm i --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
-      - name: Public TURN relay (Open Relay)
-        if: always()
+      - name: TURN relay (only when a TURN_JSON secret is configured)
+        if: always() && env.TURN_JSON != ''
+        env:
+          TURN_JSON: ${{ secrets.TURN_JSON }}
         run: node test/e2e/turn-probe.js

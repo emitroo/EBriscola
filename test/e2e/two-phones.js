@@ -1,12 +1,10 @@
-// Two phones play a full hand. Usage: node two-phones.js nearby|online [relay]
+// Two phones play a full hand. Usage: node two-phones.js nearby|online
 //   online uses the real PeerJS server unless BROKER is set (e.g. ws://localhost:9000/peerjs?key=peerjs).
-//   relay forces the fallback path (no direct connection), as between two phones on mobile data.
 const L = require('./lib');
 (async () => {
-  const mode = process.argv[2] || 'nearby', relay = process.argv[3] === 'relay';
+  const mode = process.argv[2] || 'nearby';
   const params = {};
   if (process.env.BROKER) params.broker = process.env.BROKER;
-  if (relay) params.p2p = '0';
   const b = await L.launch();
   const host = await L.phone(b, 'Pixel 7', params), guest = await L.phone(b, 'iPhone 13', params);
   const t0 = Date.now();
@@ -19,8 +17,7 @@ const L = require('./lib');
     L.log('lobby code', code);
     await host.screenshot({ path: `${L.OUT}/host-lobby-${mode}.png` });
     await L.joinOnline(guest, code, 'Anna');
-    const link = await guest.evaluate(() => (window.__briscola.net.guest.link.relay ? 'relay' : 'direct'));
-    L.log('joined in', Date.now() - t0, 'ms via', link);
+    L.log('joined in', Date.now() - t0, 'ms');
   }
   await guest.waitForTimeout(500);
   L.log('guest lobby:', await guest.$eval('.lobby-seats', (e) => e.innerText.replace(/\n/g, ' | ')));
