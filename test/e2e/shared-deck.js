@@ -1,6 +1,6 @@
 // A private deck picked by one guest becomes the deck on every phone in the lobby, including phones that never
 // entered the code, and its photos travel from that guest's phone through the host to the others (nothing is
-// downloaded from the site). Picking a regular deck turns it off again.
+// downloaded from the site). Only the host can turn it off again.
 const L = require('./lib');
 const fs = require('fs'), path = require('path');
 const PH = require('../../src/photos.js');
@@ -80,15 +80,19 @@ async function testPack(file, code) {
   check('all three hands drawn with Settlers', (await usesSettlers(host)) && (await usesSettlers(anna)) && (await usesSettlers(luca)));
   await luca.screenshot({ path: `${L.OUT}/shared-deck-luca-game.png` });
 
-  // Luca turns it off from the in-game menu by picking a regular deck; everyone goes back to their own choice.
   // The table re-renders on every play, so tap through the DOM rather than waiting for a stable element.
   const tap = (p, sel) => p.waitForFunction((s) => { const e = document.querySelector(s); if (e) e.click(); return !!e; }, sel, { timeout: 10000 });
-  await tap(luca, '.icon-btn[data-act=menu]');
-  await tap(luca, '.sheet [data-act=decks], [data-act=decks]');
-  await tap(luca, '[data-act=pick-deck][data-v=napoletane]');
-  await host.waitForFunction(() => !document.querySelector('#game .hand use[href^="#bs-settlers"]'), null, { timeout: 10000 });
+  const pickDeck = async (p, id) => { await tap(p, '.icon-btn[data-act=menu]'); await tap(p, '[data-act=decks]'); await tap(p, `[data-act=pick-deck][data-v=${id}]`); };
+
+  // A guest picking a regular deck doesn't turn the shared deck off: only the host can.
+  await pickDeck(luca, 'napoletane');
+  await host.waitForTimeout(1500);
+  check('guest can\'t turn the shared deck off', (await usesSettlers(host)) && (await usesSettlers(luca)) && (await usesSettlers(anna)));
+
+  // The host picks a regular deck: everyone goes back to their own choice.
+  await pickDeck(host, 'triestine');
   await luca.waitForFunction(() => !!document.querySelector('#game .hand use[href^="#bs-napoletane"]'), null, { timeout: 10000 });
-  check('host back to its own deck, Luca on Napoletane', !(await usesSettlers(host)) && !(await usesSettlers(luca)));
+  check('host turned it off: host on Triestine, Luca on his own pick (Napoletane)', !(await usesSettlers(host)) && !(await usesSettlers(luca)));
   check('Anna keeps Settlers (her own pick)', await usesSettlers(anna));
 
   const errs = [host, anna, luca].flatMap((p) => p.errs);

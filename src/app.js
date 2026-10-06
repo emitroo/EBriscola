@@ -853,6 +853,9 @@
       const L = S.settings.lobby;
       L.n = 2;
       L.seats = [0, 1, 2, 3].map((p) => blankSeat({ open: p > 0, name: p === 0 ? S.settings.myName : '' }));
+      // A private deck the host has picked (e.g. after loading its photo pack once) is shared in every lobby they open.
+      const mine = D.list.find((d) => d.id === S.settings.deck);
+      L.deck = mine && mine.photoDeck && deckAvailable(mine) ? mine.id : null;
     }
     S.settings.hostMode = mode;
     ui.screen = 'host';
@@ -931,18 +934,18 @@
     }
   }
 
-  /** Pick a deck on this phone. In a multiplayer game a private deck becomes the lobby deck for everyone; picking a
-   *  regular deck turns that off again, and each phone goes back to its own choice. The host decides. */
+  /** Pick a deck on this phone. In a multiplayer game a private deck picked by anyone becomes the lobby deck for
+   *  everyone; only the host can turn it off (by picking a regular deck), and then each phone goes back to its own choice. */
   function chooseDeck(id) {
     S.settings.deck = id;
     persist();
     if (isGuest()) guestSend({ t: 'deck', id });
-    else if (hosting()) setLobbyDeck(id);
+    else if (hosting()) setLobbyDeck(id, true);
   }
 
-  function setLobbyDeck(id) {
+  function setLobbyDeck(id, byHost) {
     const L = S.settings.lobby, d = D.list.find((x) => x.id === id);
-    if (!d) return false;
+    if (!d || (!d.hidden && !byHost)) return false;
     const next = d.hidden ? id : null;
     if ((L.deck || null) === next) return false;
     L.deck = next;
@@ -964,6 +967,7 @@
     photoUrls[deck] = PH.urls(map);
     D.setPhotos(deck, photoUrls[deck]);
     if (keep) PH.save(deck, map);
+    if (!isGuest()) { broadcastLobby(); broadcastView(); } // guests in the lobby fetch any photos they lack
     if (!$('#setup').hidden) renderSetup();
     render();
   }
@@ -1121,7 +1125,7 @@
       case 'photo': case 'photos-end':
         if (d.photoReq !== m.deck) break;
         if (m.t === 'photos-end') d.photoReq = null;
-        if (onPhotoMsg(m)) { broadcastLobby(); broadcastView(); }
+        onPhotoMsg(m);
         break;
       default:
     }

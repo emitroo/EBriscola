@@ -46,6 +46,9 @@ jobs:
       - name: Private deck picked by one guest is shared with the whole lobby
         if: always()
         run: node test/e2e/shared-deck.js
+      - name: Host loads a photo pack once; every later lobby streams it to guests
+        if: always()
+        run: node test/e2e/host-pack.js
       - name: Online reconnect (drop, auto-rejoin, reload + rejoin)
         if: always()
         run: node test/e2e/reconnect.js online
