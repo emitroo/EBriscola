@@ -1,0 +1,62 @@
+name: Browser tests (live signalling server)
+
+# Two to four simulated phones (Pixel/iPhone profiles in headless Chromium) play real games.
+# Online tests use the public PeerJS server (0.peerjs.com), exactly as the deployed game does.
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ['src/**', 'test/e2e/**', 'index.html', '.github/workflows/e2e.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OUT: ${{ github.workspace }}/e2e-out
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright Chromium
+        run: |
+          npm i --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Serve the app
+        run: |
+          mkdir -p "$OUT"
+          python3 -m http.server 8765 > /dev/null 2>&1 &
+          sleep 1
+          curl -sf http://localhost:8765/ > /dev/null
+      - name: Online, direct connection (2 phones)
+        run: node test/e2e/two-phones.js online
+      - name: Online, relay fallback as on mobile data (2 phones)
+        if: always()
+        run: node test/e2e/two-phones.js online relay
+      - name: Online lobby, host + 3 guests join by code
+        if: always()
+        run: node test/e2e/lobby-online.js
+      - name: Online lobby via relay, host + 3 guests
+        if: always()
+        run: node test/e2e/lobby-online.js relay
+      - name: Online reconnect (drop, auto-rejoin, reload + rejoin)
+        if: always()
+        run: node test/e2e/reconnect.js online
+      - name: Nearby QR pairing (2 phones)
+        if: always()
+        run: node test/e2e/two-phones.js nearby
+      - name: Camera scan of a real pairing QR
+        if: always()
+        run: node test/e2e/camera-scan.js
+      - name: One phone vs CPUs
+        if: always()
+        run: node test/e2e/one-phone.js 4 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: e2e-out/*.png

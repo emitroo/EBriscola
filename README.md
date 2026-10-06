@@ -25,26 +25,25 @@ Then on each phone, open the URL once and install it: Chrome → menu → **Inst
 
 ## Play on separate phones
 
-The phone that adds the others is the **host**: it runs the game and deals. Any phone can host.
+The home screen has three clearly separate choices: **On this phone**, **Online** and **Nearby, no internet**.
+In both multiplayer modes one person hosts. Their phone runs the game and deals; everyone else just joins.
 
-### Offline, with QR codes (no internet needed)
+### Online (internet on every phone)
 
-1. Put both phones on the same Wi-Fi, or turn on one phone's hotspot and join it from the other. The hotspot works with mobile data off.
-2. **Host:** under *Separate phones*, tap **Add a phone with QR**. Allow the camera.
-3. **Other phone:** tap **Join someone else's game → Scan host code**. Allow the camera and point it at the host's QR. A reply QR appears.
-4. **Host:** point the camera at the reply QR. The phone appears as *connected* and takes the next free seat.
-5. Tap **Deal the cards**.
+1. **Host:** Online → **Host a game**. A 5-letter lobby code appears, with a QR and a Share button.
+2. **Everyone else:** open the game → Online → **Join with a code**, type your name and the code, tap **Join**. Or scan the host's QR with the phone camera, which opens the game with the code filled in.
+3. Joined players fill the seats automatically (up to 4). The host can switch any seat to a CPU, then taps **Start the game**.
 
-If the phones won't connect over one phone's hotspot, try the other phone's hotspot or a normal Wi-Fi network. Some phones don't let the browser use their own hotspot.
+Connection setup goes through the free public PeerJS server (0.peerjs.com). The phones then try to talk directly; if a mobile network blocks that, the game automatically relays its (small) messages through the same server instead, so it still works on mobile data. If someone's connection drops, their phone rejoins by itself; after closing the app, opening it again shows the join screen with the last code filled in.
 
-If a phone drops out mid-hand (screen locked, app switched), the host waits. Re-pair the same way: on the host, menu → **Phones** → **Add a phone with QR**. The phone gets its seat and cards back.
+### Nearby, no internet (QR codes)
 
-### Online, with a room code
+1. Everyone joins the same Wi-Fi, or the host's phone hotspot. Mobile data can stay off.
+2. **Host:** Nearby → **Host**, then **Add a phone**.
+3. **Friend:** Nearby → **Join**. The camera opens: scan the host's code (step 1). A reply code appears on the friend's phone.
+4. **Host:** tap **They've scanned it: next** and scan the friend's reply (step 2). Repeat for each friend.
 
-1. **Host:** tap **Open a room code**. A 5-letter code and a QR appear.
-2. **Other phone:** tap **Join someone else's game**, enter the code and tap **Join**. Or just scan the room QR with the phone camera.
-
-The connection setup goes through the free public PeerJS server (0.peerjs.com). After that, game data goes directly between the phones. This works reliably on the same Wi-Fi. Between two phones on mobile data it can fail, because some mobile networks block direct connections; use the QR method on a hotspot instead. Dropped phones reconnect automatically while the room stays open.
+If phones won't connect on one phone's hotspot, try the other phone's hotspot or a normal Wi-Fi network. If a phone drops out, the host taps menu → **Phones** → **Add a phone** and the two swap codes again; the seat and cards are kept.
 
 ### Privacy and fairness
 

@@ -348,6 +348,35 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .seats.stacked .seat-row { grid-template-columns: 26px minmax(0, 1fr); }
 .seats.stacked .seat-ctrl { grid-column: 2; flex-wrap: wrap; }
 
+/* ---------- home: three ways to play ---------- */
+.mode-card { background: var(--paper); color: var(--ink); border-radius: 16px; padding: 16px; box-shadow: 0 6px 22px rgba(0,0,0,0.28); display: flex; flex-direction: column; gap: 10px; }
+.mode-head { display: flex; align-items: center; gap: 10px; }
+.mode-head h2 { font-family: var(--f-display); font-size: 21px; margin: 0; }
+.mode-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--felt); color: var(--on-felt); display: grid; place-items: center; flex: none; }
+.mode-icon svg { width: 21px; height: 21px; }
+.btn-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.home-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.home-foot .seg { background: rgba(0,0,0,0.25); }
+.home-foot .seg button { color: var(--on-felt); }
+.home-foot .seg button[aria-pressed="true"] { background: var(--paper); color: var(--ink); }
+.home-foot .linkish { color: var(--on-felt); }
+.back-link { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; border: 0; background: rgba(0,0,0,0.25); color: var(--on-felt); font-weight: 600; font-size: 14px; border-radius: 10px; padding: 8px 12px 8px 8px; cursor: pointer; min-height: 40px; }
+.back-link svg { width: 18px; height: 18px; }
+.mode-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--felt); background: #dcebdf; border-radius: 999px; padding: 4px 9px 4px 7px; white-space: nowrap; }
+.mode-badge svg { width: 14px; height: 14px; }
+.steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.4; }
+.stepper { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--wine); font-weight: 700; }
+.pair-step { display: flex; flex-direction: column; gap: 8px; }
+.pair-step h3 { margin: 0; font-family: var(--f-display); font-size: 20px; }
+.cam.peek { position: absolute; width: 2px; height: 2px; opacity: 0; pointer-events: none; overflow: hidden; }
+.ok-mark { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #2f9a4c; color: #fff; font-size: 26px; }
+.code-input { font-family: var(--f-display) !important; font-size: 30px !important; letter-spacing: 8px; text-transform: uppercase; text-align: center; min-height: 58px; }
+.join-panel { gap: 14px; }
+.sdot.wait { background: transparent; box-shadow: inset 0 0 0 2px #b9ad8f; }
+.lobby-seat .nm.muted { color: var(--ink-soft); font-weight: 400; font-style: italic; }
+.seat-ctrl .sdot { flex: none; }
+.btn[disabled] { opacity: 0.6; cursor: default; }
+
 body { touch-action: manipulation; }
 </style>
 </head>
@@ -1366,6 +1395,68 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     guest_next: 'Prossima mano',
     no_webrtc: 'Questo browser non può collegare i telefoni. Usa Chrome su Android o Safari su iPhone.',
   });
+
+  Object.assign(en, {
+    home_local_t: 'On this phone', home_local_d: 'Pass the phone around, or play against the computer.', play_here: 'Play on this phone',
+    home_online_t: 'Online', home_online_d: 'Everyone on their own phone, anywhere with internet. One person hosts and shares a code; everyone else joins with it.',
+    host_online: 'Host a game', join_code: 'Join with a code',
+    home_nearby_t: 'Nearby, no internet', home_nearby_d: 'Everyone on their own phone, in the same place. Join the same Wi-Fi or one phone’s hotspot, then scan QR codes to connect.',
+    host_nearby: 'Host', join_nearby: 'Join',
+    badge_online: 'Online', badge_nearby: 'Nearby',
+    hosting: 'You’re hosting', end_lobby: 'End lobby', confirm_end: 'Close the lobby? Everyone connected will be disconnected.',
+    invite_t: 'Invite players', lobby_code: 'Lobby code',
+    invite_d: 'Friends open {url}, tap Join with a code, and enter this code.',
+    invite_qr: 'Or they scan this QR with their phone camera.', share: 'Share invite link', link_copied: 'Invite link copied',
+    add_t: 'Add players',
+    near_s1: 'Everyone joins the same Wi-Fi, or your phone’s hotspot. Mobile data can stay off.',
+    near_s2: 'Each friend opens Briscola and taps Join under Nearby, no internet.',
+    near_s3: 'Tap Add a phone and swap QR codes, one friend at a time.',
+    add_phone: 'Add a phone', phone: 'Phone', waiting_player: 'Waiting for a player…', open_seat: 'Open seat',
+    open_seat_err: 'Player {n} is still an open seat. Wait for someone to join, or make it a CPU.',
+    start_game: 'Start the game',
+    join_online_t: 'Join an online game', join_online_d: 'Ask the host for the 5-letter code on their screen.',
+    join_nearby_t: 'Join a nearby game', join_nearby_d: 'Connect to the host’s Wi-Fi or hotspot first.',
+    step_of: 'Step {i} of 2',
+    nj_s1: 'Scan the host’s code', nj_s1_d: 'The host taps Add a phone to show it.',
+    nj_s2: 'Let the host scan this', nj_wait: 'Waiting for the host to scan it…',
+    hq_s1: 'Let your friend scan this', hq_s1_d: 'On their phone: Join under Nearby, no internet, then point the camera here.',
+    hq_next: 'They’ve scanned it: next', hq_s2: 'Now scan their code', hq_s2_d: 'A code appeared on their screen. Point your camera at it.',
+    hq_back: 'Back to my code', joined_ok: '{name} joined',
+    back: 'Back', lobby_joined: 'You’ve joined {name}’s game', scan_again: 'Scan again',
+    repair_hint: 'Ask the host to tap Add a phone, then scan again.', lobby: 'Lobby', joining: 'Joining…',
+    players_n: '{n} players', you: 'you',
+  });
+
+  Object.assign(it, {
+    home_local_t: 'Su questo telefono', home_local_d: 'Passatevi il telefono, o giocate contro il computer.', play_here: 'Gioca su questo telefono',
+    home_online_t: 'Online', home_online_d: 'Ognuno sul proprio telefono, ovunque ci sia internet. Uno ospita e condivide un codice; gli altri entrano con quello.',
+    host_online: 'Ospita una partita', join_code: 'Entra con un codice',
+    home_nearby_t: 'Vicini, senza internet', home_nearby_d: 'Ognuno sul proprio telefono, nello stesso posto. Collegatevi alla stessa Wi-Fi o all’hotspot di un telefono, poi scansionate i codici QR.',
+    host_nearby: 'Ospita', join_nearby: 'Entra',
+    badge_online: 'Online', badge_nearby: 'Vicini',
+    hosting: 'Stai ospitando', end_lobby: 'Chiudi la stanza', confirm_end: 'Chiudere la stanza? Tutti i giocatori collegati verranno disconnessi.',
+    invite_t: 'Invita i giocatori', lobby_code: 'Codice stanza',
+    invite_d: 'Gli amici aprono {url}, toccano Entra con un codice e inseriscono questo codice.',
+    invite_qr: 'Oppure inquadrano questo QR con la fotocamera.', share: 'Condividi il link', link_copied: 'Link copiato',
+    add_t: 'Aggiungi giocatori',
+    near_s1: 'Tutti sulla stessa Wi-Fi, o sull’hotspot del tuo telefono. I dati mobili possono restare spenti.',
+    near_s2: 'Ogni amico apre Briscola e tocca Entra sotto Vicini, senza internet.',
+    near_s3: 'Tocca Aggiungi un telefono e scambiatevi i codici QR, un amico alla volta.',
+    add_phone: 'Aggiungi un telefono', phone: 'Telefono', waiting_player: 'In attesa di un giocatore…', open_seat: 'Posto libero',
+    open_seat_err: 'Il giocatore {n} è ancora un posto libero. Aspetta che qualcuno entri, o mettilo alla CPU.',
+    start_game: 'Inizia la partita',
+    join_online_t: 'Entra in una partita online', join_online_d: 'Chiedi a chi ospita il codice di 5 lettere sul suo schermo.',
+    join_nearby_t: 'Entra in una partita vicina', join_nearby_d: 'Prima collegati alla Wi-Fi o all’hotspot di chi ospita.',
+    step_of: 'Passo {i} di 2',
+    nj_s1: 'Scansiona il codice di chi ospita', nj_s1_d: 'Chi ospita tocca Aggiungi un telefono per mostrarlo.',
+    nj_s2: 'Fai scansionare questo a chi ospita', nj_wait: 'In attesa che chi ospita lo scansioni…',
+    hq_s1: 'Fai scansionare questo al tuo amico', hq_s1_d: 'Sul suo telefono: Entra sotto Vicini, senza internet, poi inquadra qui.',
+    hq_next: 'Fatto, avanti', hq_s2: 'Ora scansiona il suo codice', hq_s2_d: 'Sul suo schermo è apparso un codice. Inquadralo con la fotocamera.',
+    hq_back: 'Torna al mio codice', joined_ok: '{name} è entrato',
+    back: 'Indietro', lobby_joined: 'Sei nella partita di {name}', scan_again: 'Scansiona di nuovo',
+    repair_hint: 'Chiedi a chi ospita di toccare Aggiungi un telefono, poi scansiona di nuovo.', lobby: 'Stanza', joining: 'Ingresso…',
+    players_n: '{n} giocatori', you: 'tu',
+  });
   root.BriscolaI18n = { en, it };
 })(typeof self !== 'undefined' ? self : this);
 
@@ -1445,6 +1536,15 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     }).join('\r\n');
   }
 
+  // Both link types ping every 4 s and give up after 15 s of silence.
+  function startKeepalive(link) {
+    link.lastSeen = Date.now();
+    link.pingTimer = setInterval(() => {
+      if (Date.now() - link.lastSeen > 15000) { link.close('timeout'); return; }
+      link.send({ t: 'ping' });
+    }, 4000);
+  }
+
   // ---------- one peer connection with a JSON data channel ----------
   class Link {
     constructor(opts) {
@@ -1470,11 +1570,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       dc.onopen = () => {
         if (this.open) return;
         this.open = true;
-        this.lastSeen = Date.now();
-        this.pingTimer = setInterval(() => {
-          if (Date.now() - this.lastSeen > 15000) { this.close('timeout'); return; }
-          this.send({ t: 'ping' });
-        }, 4000);
+        startKeepalive(this);
         this.emit('open');
       };
       dc.onmessage = (e) => {
@@ -1543,6 +1639,41 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       clearInterval(this.pingTimer);
       try { if (this.dc) this.dc.close(); } catch (e) { /* ignore */ }
       try { this.pc.close(); } catch (e) { /* ignore */ }
+      this.emit('close', reason);
+    }
+  }
+
+  // ---------- fallback: game messages relayed through the signalling server ----------
+  // Used when the phones cannot reach each other directly (common between two phones on mobile data).
+  // Same interface as Link. Messages ride inside CANDIDATE envelopes, which the server forwards unchanged.
+  class RelayLink {
+    constructor(broker, peer) {
+      this.broker = broker;
+      this.peer = peer;
+      this.handlers = {};
+      this.relay = true;
+      this.open = true;
+      this.closed = false;
+      startKeepalive(this);
+    }
+    on(ev, fn) { this.handlers[ev] = fn; return this; }
+    emit(ev, a, b) { const f = this.handlers[ev]; if (f) { try { f(a, b); } catch (e) { console.error(e); } } }
+    send(m) {
+      if (this.closed || !this.broker.ws || this.broker.ws.readyState !== 1) return false;
+      this.broker.send('CANDIDATE', this.peer, { r: m });
+      return true;
+    }
+    receive(m) {
+      this.lastSeen = Date.now();
+      if (m && m.t !== 'ping') this.emit('message', m);
+    }
+    whenOpen() { return Promise.resolve(); }
+    close(reason) {
+      if (this.closed) return;
+      if (reason !== 'peer-closed') this.send({ t: 'relay-close' });
+      this.closed = true;
+      this.open = false;
+      clearInterval(this.pingTimer);
       this.emit('close', reason);
     }
   }
@@ -1673,6 +1804,11 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   const normaliseRoom = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
   const roomPeerId = (code) => `briscola-${code}`;
 
+  /** Test switch: ?p2p=0 skips the direct connection and goes straight to the relay. */
+  function directAllowed() {
+    try { return new URLSearchParams(location.search).get('p2p') !== '0'; } catch (e) { return true; }
+  }
+
   function brokerUrl() {
     try {
       const q = new URLSearchParams(location.search).get('broker');
@@ -1682,7 +1818,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   }
 
   root.BriscolaNet = {
-    PROTOCOL, STUN, Link, Broker, pack, unpack, qrSvg, startScanner, deviceId, roomCode, normaliseRoom, roomPeerId, brokerUrl,
+    PROTOCOL, STUN, Link, RelayLink, Broker, directAllowed, pack, unpack, qrSvg, startScanner, deviceId, roomCode, normaliseRoom, roomPeerId, brokerUrl,
     supported: () => typeof RTCPeerConnection !== 'undefined',
   };
 })(typeof self !== 'undefined' ? self : this);
@@ -1690,9 +1826,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 ;
 /* Briscola: UI, game flow, pass-and-play and phone-to-phone multiplayer.
  *
- * Multiplayer model: the phone that pairs others is the host. It runs the engine and sends every guest
- * phone a redacted view (its own cards only). Guests send back the card they play. Seats can mix
- * this-phone humans, CPU players and other phones.
+ * Three ways to play, chosen on the home screen:
+ *   - On this phone: pass-and-play and CPU players.
+ *   - Online: the host opens a lobby with a 5-letter code; others join with the code.
+ *   - Nearby, no internet: the host adds phones one at a time by swapping QR codes on a shared Wi-Fi/hotspot.
+ * Multiplayer model: the host phone runs the engine and sends every guest phone a redacted view
+ * (its own cards only). Guests send back the card they play.
  */
 (function () {
   'use strict';
@@ -1700,6 +1839,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   // BRISCOLA_NO_NET is set by builds that run where peer-to-peer connections are blocked (the claude.ai Artifact).
   const N = window.BriscolaNet && window.BriscolaNet.supported() && !window.BRISCOLA_NO_NET ? window.BriscolaNet : null;
   const STORE = 'briscola.v1';
+  const SITE = 'emitroo.github.io/Briscola';
 
   // ---------- persistence ----------
   const store = {
@@ -1707,20 +1847,23 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     save(v) { try { localStorage.setItem(STORE, JSON.stringify(v)); } catch (e) { /* storage unavailable: play on without saving */ } },
   };
 
+  const blankSeat = (extra) => Object.assign({ name: '', cpu: false, level: 'normal', remote: null, open: false }, extra || {});
   const DEFAULTS = {
     lang: (navigator.language || 'en').toLowerCase().startsWith('it') ? 'it' : 'en',
     deck: 'triestine',
     n: 2,
-    seats: [0, 1, 2, 3].map(() => ({ name: '', cpu: false, level: 'normal', remote: null })),
+    seats: [0, 1, 2, 3].map(() => blankSeat()),
+    lobby: { n: 2, seats: [0, 1, 2, 3].map((p) => blankSeat({ open: p > 0 })) },
     hideHands: true, twoTap: true, swap: 0, partnerView: true, showScore: false,
     target: 1, speed: 'normal', sound: true,
-    myName: '', knownDevs: {}, room: null, lastRoom: null,
+    myName: '', knownDevs: {}, hostMode: null, room: null, lastRoom: null,
   };
 
   const S = { settings: JSON.parse(JSON.stringify(DEFAULTS)), session: null, savedSession: null };
   // session: { cfg: {n, seats, swap, target}, G (engine state, or a redacted view on guests), M: {wins, hand, dealer, over, counted}, opts? }
 
   const ui = {
+    screen: 'home', // 'home' | 'local' | 'host' | 'join'
     viewer: -1, selected: null, handoff: null, sheet: null, toast: null, collecting: false,
     justPlayed: null, justDrawn: [], drawnAll: null, gen: 0, humanResolve: null, remoteWait: null, error: '', sent: false,
   };
@@ -1728,9 +1871,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   const net = {
     role: null, // null (this phone runs the game) | 'guest'
     devices: {}, // host: dev -> { dev, name, link, online, via }
-    room: null, // host: { code, broker, status: 'opening' | 'open' | 'error', err }
-    pair: null, // open pairing screen state
-    guest: null, // guest: { link, mode, code, hostName, status, lobby }
+    room: null, // host, online lobby: { code, broker, status: 'opening' | 'open' | 'error', err }
+    pair: null, // open QR pairing screen state
+    guest: null, // guest: { link, mode, code, hostName, status, lobby, broker }
+    joining: false,
     lastSent: {},
   };
   const DEV = N ? N.deviceId() : 'local';
@@ -1758,7 +1902,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   const deviceList = () => Object.values(net.devices);
   const hasDevices = () => deviceList().length > 0;
   const devOnline = (dev) => !!(net.devices[dev] && net.devices[dev].online);
-  const devName = (dev) => (net.devices[dev] && net.devices[dev].name) || S.settings.knownDevs[dev] || t('remote');
+  const devName = (dev) => (net.devices[dev] && net.devices[dev].name) || S.settings.knownDevs[dev] || t('phone');
+  const hosting = () => !!S.settings.hostMode;
+  /** The seat configuration being edited: the lobby when hosting, the one-phone setup otherwise. */
+  const src = () => (hosting() ? S.settings.lobby : S.settings);
 
   const cfg = () => S.session.cfg;
   const G = () => S.session.G;
@@ -1770,6 +1917,17 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     const s = seats[p];
     const nm = (s.name || '').trim();
     return nm || (s.cpu ? t('cpu_name', { n: p + 1 }) : t('seat', { n: p + 1 }));
+  }
+  /** Display name for a seat in the setup or lobby, before the game starts. */
+  function setupName(c, p) {
+    const s = c.seats[p];
+    const nm = (s.name || '').trim();
+    if (nm) return nm;
+    if (s.cpu) return t('cpu_name', { n: p + 1 });
+    if (s.remote) return devName(s.remote);
+    if (s.open) return t('open_seat');
+    if (hosting() && c === S.settings.lobby && S.settings.myName.trim()) return S.settings.myName.trim();
+    return t('seat', { n: p + 1 });
   }
   const name = (p) => nameFrom(cfg().seats, p);
   /** A human seat played on this phone. */
@@ -1791,12 +1949,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     return { perPlayer: g.pts, perSide: g.teams ? [g.pts[0] + g.pts[2], g.pts[1] + g.pts[3]] : g.pts.slice() };
   }
   function hostName() {
-    const st = S.settings;
-    for (let p = 0; p < st.n; p++) {
-      const s = st.seats[p];
-      if (!s.cpu && !s.remote && s.name.trim()) return s.name.trim();
+    const L = S.settings.lobby;
+    for (let p = 0; p < L.n; p++) {
+      const s = L.seats[p];
+      if (!s.cpu && !s.remote && !s.open && s.name.trim()) return s.name.trim();
     }
-    return t('host_tag');
+    return S.settings.myName.trim() || t('host_tag');
   }
 
   function cardName(c) {
@@ -1814,7 +1972,11 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
     close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-3"/></svg>',
+    left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
     phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg>',
+    globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg>',
+    wifi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 9a14 14 0 0119 0M5.5 12.5a9.5 9.5 0 0113 0M8.7 16a5 5 0 016.6 0"/><circle cx="12" cy="19.3" r="1" fill="currentColor"/></svg>',
+    cards: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="11" height="15" rx="2" transform="rotate(-8 8.5 12.5)"/><rect x="10" y="4" width="11" height="15" rx="2" transform="rotate(8 15.5 11.5)"/></svg>',
   };
 
   function toastHTML(x) {
@@ -1848,7 +2010,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) { /* refused */ }
   }
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && (S.session || hasDevices() || isGuest())) keepAwake();
+    if (document.visibilityState === 'visible' && (S.session || hasDevices() || isGuest() || hosting())) keepAwake();
   });
 
   // ---------- table geometry ----------
@@ -1869,111 +2031,177 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     return ['bottom', 'right', 'top', 'left'][r];
   }
 
-  // ================= SETUP SCREEN =================
+  // ================= SETUP SCREENS =================
   const seg = (act, opts, cur) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" data-act="${act}" data-v="${v}" aria-pressed="${String(cur) === String(v)}">${esc(l)}</button>`).join('')}</div>`;
+  const sw = (id, key) => `<span class="switch"><input type="checkbox" id="${id}" data-set="${key}" ${S.settings[key] ? 'checked' : ''}><span></span></span>`;
+  const brand = (sub) => `<header class="brand"><div><h1 class="wordmark">Briscola</h1><p class="wordmark-sub">${sub}</p></div><div class="brand-suits">${[0, 1, 2, 3].map((s) => D.suitIcon(s, deckId())).join('')}</div></header>`;
+  const backBar = (act, label) => `<button class="back-link" data-act="${act}">${ICON.left}<span>${label}</span></button>`;
 
   function renderSetup() {
+    document.documentElement.lang = S.settings.lang;
     if (isGuest()) { renderLobby(); return; }
-    const st = S.settings, n = st.n, d = deck();
-    const sw = (id, key) => `<span class="switch"><input type="checkbox" id="${id}" data-set="${key}" ${st[key] ? 'checked' : ''}><span></span></span>`;
-    const devs = deviceList();
-
-    let seats = '';
-    for (let p = 0; p < n; p++) {
-      const s = st.seats[p];
-      const team = n === 4 ? (p % 2 ? 'team-b' : 'team-a') : '';
-      const kind = s.remote ? 'r' : s.cpu ? 'c' : 'h';
-      const kinds = [['h', devs.length || s.remote ? t('this_phone') : t('human')], ['c', t('cpu')]];
-      if (devs.length || s.remote) kinds.push(['r', t('remote')]);
-      let extra = '';
-      if (s.cpu) extra = `<select id="seat-level-${p}" data-level="${p}" aria-label="CPU">${['easy', 'normal', 'hard'].map((l) => `<option value="${l}" ${s.level === l ? 'selected' : ''}>${t(l)}</option>`).join('')}</select>`;
-      else if (s.remote) {
-        const ids = new Set(devs.map((x) => x.dev).concat([s.remote]));
-        extra = `<select id="seat-dev-${p}" data-dev="${p}" aria-label="${t('choose_phone')}">${[...ids].map((id) => `<option value="${esc(id)}" ${s.remote === id ? 'selected' : ''}>${esc(devName(id))}${devOnline(id) ? '' : ' (' + t('st_offline') + ')'}</option>`).join('')}</select>`;
-      }
-      seats += `<div class="seat-row"><span class="dot ${team}">${p + 1}</span>
-        <input id="seat-name-${p}" data-name="${p}" maxlength="16" autocomplete="off" placeholder="${esc(s.cpu ? t('cpu_name', { n: p + 1 }) : s.remote ? devName(s.remote) : t('seat', { n: p + 1 }))}" value="${esc(s.name)}">
-        <div class="seat-ctrl">${seg('seat-kind-' + p, kinds, kind)}${extra}</div></div>`;
-    }
-    const hint = seatHint();
-
-    let resume = '';
-    if (S.session && S.session.G) {
-      const c = S.session.cfg;
-      const names = c.seats.slice(0, c.n).map((_, p) => nameFrom(c.seats, p)).join(', ');
-      resume = `<button class="resume" data-act="resume"><span><strong>${t('resume')}</strong><span>${esc(t('resume_d', { hand: S.session.M.hand, names }))}</span></span><span aria-hidden="true">&rsaquo;</span></button>`;
-    }
-
-    const suits = [0, 1, 2, 3].map((s) => D.suitIcon(s, d.id)).join('');
-    $('#setup').innerHTML = `<div class="setup-wrap">
-      <header class="brand"><div><h1 class="wordmark">Briscola</h1><p class="wordmark-sub">${t('tagline')}</p></div><div class="brand-suits">${suits}</div></header>
-      ${resume}
-      <div class="panel"><div class="panel-head"><h2>${t('players')}</h2></div>
-        ${seg('n', [[2, '2'], [3, '3'], [4, '4']], n)}
-        <div class="seats${devs.length || st.seats.slice(0, n).some((x) => x.remote) ? ' stacked' : ''}">${seats}</div>
-        ${hint ? `<p class="hint" id="seat-hint">${hint}</p>` : ''}
-        ${ui.error ? `<p class="error" role="alert">${esc(ui.error)}</p>` : ''}
-      </div>
-      ${phonesPanel()}
-      <div class="panel"><div class="panel-head"><h2>${t('deck')}</h2></div>
-        <button class="deck-choice" data-act="decks">${fanHTML(d)}<span class="deck-meta"><strong>${d.name}</strong><span>${d.region} · ${d.area}</span><span>${t('sys_' + d.system)}, ${t(d.figures)}</span><em>${t('change')}</em></span></button>
-      </div>
-      <div class="panel"><h2>${t('options')}</h2>
-        <div class="opt"><label for="o-hide">${t('opt_hide')}</label>${sw('o-hide', 'hideHands')}<p class="hint">${t('opt_hide_d')}</p></div>
-        <div class="opt"><label for="o-tap">${t('opt_twotap')}</label>${sw('o-tap', 'twoTap')}<p class="hint">${t('opt_twotap_d')}</p></div>
-        <div class="opt"><span class="lbl">${t('opt_swap')}</span>${seg('swap', [[0, t('off')], [2, '2'], [7, '7']], st.swap)}<p class="hint">${t('opt_swap_d')}</p></div>
-        ${n === 4 ? `<div class="opt"><label for="o-partner">${t('opt_partner')}</label>${sw('o-partner', 'partnerView')}<p class="hint">${t('opt_partner_d')}</p></div>` : ''}
-        <div class="opt"><label for="o-score">${t('opt_score')}</label>${sw('o-score', 'showScore')}<p class="hint">${t('opt_score_d')}</p></div>
-        <div class="opt"><span class="lbl">${t('opt_match')}</span>${seg('target', [[1, '1'], [2, '2'], [3, '3'], [5, '5']], st.target)}</div>
-        <div class="opt"><span class="lbl">${t('opt_speed')}</span>${seg('speed', [['slow', t('slow')], ['normal', t('normal')], ['fast', t('fast')]], st.speed)}</div>
-        <div class="opt"><label for="o-sound">${t('opt_sound')}</label>${sw('o-sound', 'sound')}</div>
-        <div class="opt"><span class="lbl">${t('lang')}</span>${seg('lang', [['en', 'English'], ['it', 'Italiano']], st.lang)}</div>
-      </div>
-      <p style="text-align:center;margin:0"><button class="linkish" data-act="rules" style="color:var(--on-felt)">${t('rules')}</button></p>
-    </div>
-    <div class="deal-bar"><button class="btn btn-primary" data-act="deal">${t('deal')}</button></div>`;
-    document.documentElement.lang = st.lang;
+    if (ui.screen === 'local') renderLocal();
+    else if (ui.screen === 'host' && hosting()) renderHost();
+    else if (ui.screen === 'join') renderJoin();
+    else { ui.screen = 'home'; renderHome(); }
     broadcastLobby();
   }
 
-  function deviceRows() {
-    return deviceList().map((d) => `<div class="dev-row"><span class="sdot ${d.online ? 'on' : 'off'}"></span>
-      <span class="dev-meta"><strong>${esc(d.name || t('remote'))}</strong><span>${d.via === 'room' ? t('room_code') : 'QR'} · ${t(d.online ? 'st_online' : 'st_offline')}</span></span>
-      <button class="close-btn" data-act="dev-remove" data-v="${esc(d.dev)}" aria-label="${t('remove')}">${ICON.close}</button></div>`).join('');
+  function resumeBanner() {
+    if (!S.session || !S.session.G) return '';
+    const c = S.session.cfg;
+    const names = c.seats.slice(0, c.n).map((_, p) => nameFrom(c.seats, p)).join(', ');
+    return `<button class="resume" data-act="resume"><span><strong>${t('resume')}</strong><span>${esc(t('resume_d', { hand: S.session.M.hand, names }))}</span></span><span aria-hidden="true">&rsaquo;</span></button>`;
   }
 
-  let roomQrCache = { code: null, svg: '' };
-  function roomBlock() {
-    const r = net.room;
-    if (!r) return '';
-    if (r.status === 'opening') return `<div class="room-box"><p class="hint">${t('room_opening')}</p></div>`;
-    if (r.status === 'error') return `<div class="room-box"><p class="error">${esc(r.err)}</p><button class="btn btn-ghost" data-act="room-close">${t('close')}</button></div>`;
-    if (roomQrCache.code !== r.code) {
-      const url = location.origin + location.pathname + '?join=' + r.code;
-      roomQrCache = { code: r.code, svg: N.qrSvg(url) };
-    }
-    return `<div class="room-box"><span class="kicker">${t('room_code')}</span><div class="room-code" id="room-code">${r.code}</div>
-      <div class="qr-box small">${roomQrCache.svg}</div><p class="hint">${t('room_hint')}</p>
-      <button class="btn btn-ghost" data-act="room-close">${t('close_room')}</button></div>`;
-  }
-
-  function phonesPanel() {
-    if (!N) return '';
-    const devs = deviceList();
-    return `<div class="panel" id="phones-panel"><div class="panel-head"><h2>${t('phones')}</h2>${ICON.phone}</div>
-      ${devs.length ? `<div class="devs">${deviceRows()}</div>` : `<p class="hint">${t('phones_d')}</p>`}
-      ${roomBlock()}
-      <div class="btn-col">
-        <button class="btn btn-ink" data-act="pair-qr">${t('add_qr')}<small>${t('add_qr_d')}</small></button>
-        ${net.room ? '' : `<button class="btn btn-ghost" data-act="room-open">${t('open_room')}<small>${t('open_room_d')}</small></button>`}
-      </div>
-      ${devs.length || net.room ? '' : `${S.settings.lastRoom ? `<button class="btn btn-primary" data-act="rejoin">${t('rejoin', { code: S.settings.lastRoom })}</button>` : ''}<p style="text-align:center;margin:0"><button class="linkish" data-act="join-open">${t('join_game')}</button></p>`}
+  function renderHome() {
+    const net1 = N ? `
+      <section class="mode-card"><div class="mode-head"><span class="mode-icon">${ICON.globe}</span><h2>${t('home_online_t')}</h2></div>
+        <p class="hint">${t('home_online_d')}</p>
+        <div class="btn-pair"><button class="btn btn-primary" data-act="host-online">${t('host_online')}</button><button class="btn btn-ink" data-act="join-online">${t('join_code')}</button></div></section>
+      <section class="mode-card"><div class="mode-head"><span class="mode-icon">${ICON.wifi}</span><h2>${t('home_nearby_t')}</h2></div>
+        <p class="hint">${t('home_nearby_d')}</p>
+        <div class="btn-pair"><button class="btn btn-primary" data-act="host-nearby">${t('host_nearby')}</button><button class="btn btn-ink" data-act="join-nearby">${t('join_nearby')}</button></div></section>` : '';
+    $('#setup').innerHTML = `<div class="setup-wrap">
+      ${brand(t('tagline'))}
+      ${resumeBanner()}
+      <section class="mode-card"><div class="mode-head"><span class="mode-icon">${ICON.cards}</span><h2>${t('home_local_t')}</h2></div>
+        <p class="hint">${t('home_local_d')}</p>
+        <button class="btn btn-primary" data-act="go-local">${t('play_here')}</button></section>
+      ${net1}
+      <div class="home-foot">${seg('lang', [['en', 'English'], ['it', 'Italiano']], S.settings.lang)}<button class="linkish" data-act="rules">${t('rules')}</button></div>
     </div>`;
   }
 
+  function seatRows(c, hostMode) {
+    const devs = deviceList();
+    let rows = '';
+    for (let p = 0; p < c.n; p++) {
+      const s = c.seats[p];
+      const team = c.n === 4 ? (p % 2 ? 'team-b' : 'team-a') : '';
+      let kinds, kind, extra = '';
+      if (hostMode) {
+        kinds = [['h', t('this_phone')], ['o', t('phone')], ['c', t('cpu')]];
+        kind = s.cpu ? 'c' : s.open || s.remote ? 'o' : 'h';
+      } else {
+        kinds = [['h', t('human')], ['c', t('cpu')]];
+        kind = s.cpu ? 'c' : 'h';
+      }
+      if (kind === 'c') extra = `<select id="seat-level-${p}" data-level="${p}" aria-label="CPU">${['easy', 'normal', 'hard'].map((l) => `<option value="${l}" ${s.level === l ? 'selected' : ''}>${t(l)}</option>`).join('')}</select>`;
+      else if (kind === 'o') {
+        const ids = devs.map((x) => x.dev);
+        if (s.remote && !ids.includes(s.remote)) ids.push(s.remote);
+        extra = `<select id="seat-dev-${p}" data-dev="${p}" aria-label="${t('phone')}"><option value="" ${s.remote ? '' : 'selected'}>${t('waiting_player')}</option>${ids.map((id) => `<option value="${esc(id)}" ${s.remote === id ? 'selected' : ''}>${esc(devName(id))}${devOnline(id) ? '' : ' (' + t('st_offline') + ')'}</option>`).join('')}</select>`;
+      }
+      const status = kind === 'o' ? `<span class="sdot ${s.remote ? (devOnline(s.remote) ? 'on' : 'off') : 'wait'}"></span>` : '';
+      rows += `<div class="seat-row"><span class="dot ${team}">${p + 1}</span>
+        <input id="seat-name-${p}" data-name="${p}" maxlength="16" autocomplete="off" placeholder="${esc(setupName(c, p))}" value="${esc(s.name)}">
+        <div class="seat-ctrl">${seg('seat-kind-' + p, kinds, kind)}${extra}${status}</div></div>`;
+    }
+    return rows;
+  }
+
   function seatHint() {
-    const st = S.settings, n = st.n, nm = (p) => esc(nameFrom(st.seats, p));
+    const c = src(), n = c.n, nm = (p) => esc(setupName(c, p));
     return n === 4 ? t('teams_hint', { a: nm(0), b: nm(1), c: nm(2), d: nm(3) }) : n === 3 ? t('three_hint') : '';
+  }
+
+  function playersPanel(hostMode) {
+    const c = src(), hint = seatHint();
+    return `<div class="panel"><div class="panel-head"><h2>${t('players')}</h2></div>
+      ${seg('n', [[2, '2'], [3, '3'], [4, '4']], c.n)}
+      <div class="seats${hostMode ? ' stacked' : ''}">${seatRows(c, hostMode)}</div>
+      ${hint ? `<p class="hint" id="seat-hint">${hint}</p>` : ''}
+      ${ui.error ? `<p class="error" role="alert">${esc(ui.error)}</p>` : ''}
+    </div>`;
+  }
+
+  function deckPanel(withMeta) {
+    const d = deck();
+    return `<div class="panel"><div class="panel-head"><h2>${t('deck')}</h2></div>
+      <button class="deck-choice" data-act="decks">${fanHTML(d)}<span class="deck-meta"><strong>${d.name}</strong><span>${d.region} · ${d.area}</span>${withMeta ? `<span>${t('sys_' + d.system)}, ${t(d.figures)}</span>` : ''}<em>${t('change')}</em></span></button>
+    </div>`;
+  }
+
+  function optionsPanel(c) {
+    const st = S.settings;
+    return `<div class="panel"><h2>${t('options')}</h2>
+      <div class="opt"><label for="o-hide">${t('opt_hide')}</label>${sw('o-hide', 'hideHands')}<p class="hint">${t('opt_hide_d')}</p></div>
+      <div class="opt"><label for="o-tap">${t('opt_twotap')}</label>${sw('o-tap', 'twoTap')}<p class="hint">${t('opt_twotap_d')}</p></div>
+      <div class="opt"><span class="lbl">${t('opt_swap')}</span>${seg('swap', [[0, t('off')], [2, '2'], [7, '7']], st.swap)}<p class="hint">${t('opt_swap_d')}</p></div>
+      ${c.n === 4 ? `<div class="opt"><label for="o-partner">${t('opt_partner')}</label>${sw('o-partner', 'partnerView')}<p class="hint">${t('opt_partner_d')}</p></div>` : ''}
+      <div class="opt"><label for="o-score">${t('opt_score')}</label>${sw('o-score', 'showScore')}<p class="hint">${t('opt_score_d')}</p></div>
+      <div class="opt"><span class="lbl">${t('opt_match')}</span>${seg('target', [[1, '1'], [2, '2'], [3, '3'], [5, '5']], st.target)}</div>
+      <div class="opt"><span class="lbl">${t('opt_speed')}</span>${seg('speed', [['slow', t('slow')], ['normal', t('normal')], ['fast', t('fast')]], st.speed)}</div>
+      <div class="opt"><label for="o-sound">${t('opt_sound')}</label>${sw('o-sound', 'sound')}</div>
+      <div class="opt"><span class="lbl">${t('lang')}</span>${seg('lang', [['en', 'English'], ['it', 'Italiano']], st.lang)}</div>
+    </div>`;
+  }
+
+  function renderLocal() {
+    $('#setup').innerHTML = `<div class="setup-wrap">
+      ${backBar('go-home', t('back'))}
+      ${brand(t('home_local_t'))}
+      ${resumeBanner()}
+      ${playersPanel(false)}
+      ${deckPanel(true)}
+      ${optionsPanel(S.settings)}
+      <p style="text-align:center;margin:0"><button class="linkish" data-act="rules" style="color:var(--on-felt)">${t('rules')}</button></p>
+    </div>
+    <div class="deal-bar"><button class="btn btn-primary" data-act="deal">${t('deal')}</button></div>`;
+  }
+
+  let roomQrCache = { code: null, svg: '' };
+  const joinUrl = (code) => location.origin + location.pathname + '?join=' + code;
+
+  function invitePanel() {
+    const mode = S.settings.hostMode;
+    if (mode === 'online') {
+      const r = net.room;
+      let body;
+      if (!r || r.status === 'opening') body = `<p class="pair-status">${t('room_opening')}</p>`;
+      else if (r.status === 'error') body = `<p class="error">${esc(r.err)}</p><button class="btn btn-primary" data-act="room-retry">${t('connect')}</button>`;
+      else {
+        if (roomQrCache.code !== r.code) roomQrCache = { code: r.code, svg: N.qrSvg(joinUrl(r.code)) };
+        body = `<div class="room-box"><span class="kicker">${t('lobby_code')}</span><div class="room-code" id="room-code">${r.code}</div>
+          <p class="hint">${esc(t('invite_d', { url: SITE }))}</p>
+          <div class="qr-box small">${roomQrCache.svg}</div><p class="hint">${t('invite_qr')}</p>
+          <button class="btn btn-ghost" data-act="share-link" id="share-btn">${t('share')}</button></div>`;
+      }
+      return `<div class="panel"><div class="panel-head"><h2>${t('invite_t')}</h2><span class="mode-badge">${ICON.globe}${t('badge_online')}</span></div>${body}</div>`;
+    }
+    return `<div class="panel"><div class="panel-head"><h2>${t('add_t')}</h2><span class="mode-badge">${ICON.wifi}${t('badge_nearby')}</span></div>
+      <ol class="steps"><li>${t('near_s1')}</li><li>${t('near_s2')}</li><li>${t('near_s3')}</li></ol>
+      <button class="btn btn-primary" data-act="pair-qr">${t('add_phone')}</button></div>`;
+  }
+
+  function renderHost() {
+    const L = S.settings.lobby;
+    $('#setup').innerHTML = `<div class="setup-wrap">
+      ${backBar('host-end', t('end_lobby'))}
+      ${brand(t('hosting'))}
+      ${resumeBanner()}
+      ${invitePanel()}
+      ${playersPanel(true)}
+      ${deckPanel(false)}
+      ${optionsPanel(L)}
+    </div>
+    <div class="deal-bar"><button class="btn btn-primary" data-act="deal">${t('start_game')}</button></div>`;
+  }
+
+  function renderJoin() {
+    $('#setup').innerHTML = `<div class="setup-wrap">
+      ${backBar('go-home', t('back'))}
+      ${brand(t('join_online_t'))}
+      <div class="panel join-panel">
+        <label class="field"><span>${t('your_name')}</span><input id="my-name" data-myname maxlength="16" autocomplete="off" autocapitalize="words" value="${esc(S.settings.myName)}"></label>
+        <label class="field"><span>${t('lobby_code')}</span><input id="pj-room" class="code-input" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCDE" value="${esc(ui.joinCode || '')}"></label>
+        <button class="btn btn-primary" data-act="join-room" id="join-btn" ${net.joining ? 'disabled' : ''}>${t(net.joining ? 'joining' : 'join')}</button>
+        <p class="pair-status" id="pj-room-status" role="status">${ui.joinStatus ? esc(ui.joinStatus) : ''}</p>
+        <p class="hint">${t('join_online_d')}</p>
+      </div>
+      ${deckPanel(false)}
+    </div>`;
   }
 
   function fanHTML(d) {
@@ -1983,24 +2211,22 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
   // ---------- guest lobby ----------
   function renderLobby() {
-    const gst = net.guest, lob = gst.lobby, d = deck();
+    const gst = net.guest, lob = gst.lobby;
     const host = (lob && lob.host) || gst.hostName || t('host_tag');
     let seats = '';
     if (lob) {
-      seats = lob.seats.map((s, p) => `<div class="lobby-seat"><span class="dot ${lob.n === 4 ? (p % 2 ? 'team-b' : 'team-a') : ''}">${p + 1}</span><span class="nm">${esc(s.name)}</span>${s.cpu ? `<span class="badge">${t('cpu')}</span>` : ''}${s.mine ? `<span class="badge mine">${t('you_tag')}</span>` : ''}</div>`).join('');
+      seats = lob.seats.map((s, p) => `<div class="lobby-seat"><span class="dot ${lob.n === 4 ? (p % 2 ? 'team-b' : 'team-a') : ''}">${p + 1}</span><span class="nm${s.open ? ' muted' : ''}">${esc(s.open ? t('waiting_player') : s.name)}</span>${s.cpu ? `<span class="badge">${t('cpu')}</span>` : ''}${s.host ? `<span class="badge">${t('host_tag')}</span>` : ''}${s.mine ? `<span class="badge mine">${t('you_tag')}</span>` : ''}</div>`).join('');
     }
-    const sw = (id, key) => `<span class="switch"><input type="checkbox" id="${id}" data-set="${key}" ${S.settings[key] ? 'checked' : ''}><span></span></span>`;
+    const badge = gst.mode === 'room' ? `<span class="mode-badge">${ICON.globe}${t('badge_online')}${gst.code ? ' · ' + esc(gst.code) : ''}</span>` : `<span class="mode-badge">${ICON.wifi}${t('badge_nearby')}</span>`;
     $('#setup').innerHTML = `<div class="setup-wrap">
-      <header class="brand"><div><h1 class="wordmark">Briscola</h1><p class="wordmark-sub">${esc(t('lobby_title', { name: host }))}</p></div><div class="brand-suits">${[0, 1, 2, 3].map((s) => D.suitIcon(s, d.id)).join('')}</div></header>
+      ${brand(esc(t('lobby_joined', { name: host })))}
       ${guestBanner()}
-      <div class="panel"><div class="panel-head"><h2>${t('seats_title')}</h2>${ICON.phone}</div>
-        <label class="field"><span>${t('your_name')}</span><input id="my-name" data-myname maxlength="16" autocomplete="off" value="${esc(S.settings.myName)}"></label>
+      <div class="panel"><div class="panel-head"><h2>${t('players')}</h2>${badge}</div>
         <div class="lobby-seats">${seats}</div>
-        <p class="hint">${esc(t('lobby_wait', { name: host }))}</p>
+        <p class="pair-status">${esc(t('lobby_wait', { name: host }))}</p>
+        <label class="field"><span>${t('your_name')}</span><input id="my-name" data-myname maxlength="16" autocomplete="off" autocapitalize="words" value="${esc(S.settings.myName)}"></label>
       </div>
-      <div class="panel"><div class="panel-head"><h2>${t('deck')}</h2></div>
-        <button class="deck-choice" data-act="decks">${fanHTML(d)}<span class="deck-meta"><strong>${d.name}</strong><span>${d.region} · ${d.area}</span><em>${t('change')}</em></span></button>
-      </div>
+      ${deckPanel(false)}
       <div class="panel"><h2>${t('options')}</h2>
         <div class="opt"><label for="o-tap">${t('opt_twotap')}</label>${sw('o-tap', 'twoTap')}</div>
         <div class="opt"><label for="o-sound">${t('opt_sound')}</label>${sw('o-sound', 'sound')}</div>
@@ -2008,14 +2234,13 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       </div>
       <p style="text-align:center;margin:0"><button class="btn btn-ghost" data-act="guest-leave" style="color:var(--on-felt)">${t('leave')}</button></p>
     </div>`;
-    document.documentElement.lang = S.settings.lang;
   }
 
   function guestBanner() {
     const gst = net.guest;
     if (!gst || gst.status !== 'lost') return '';
     if (gst.mode === 'room') return `<div class="netbanner">${t('lost')} ${t('reconnecting')}</div>`;
-    return `<div class="netbanner">${t('lost')} ${t('repair_hint')}<button class="btn btn-light" data-act="join-open">${t('scan_host')}</button></div>`;
+    return `<div class="netbanner">${t('lost')} ${t('repair_hint')}<button class="btn btn-light" data-act="join-nearby">${t('scan_again')}</button></div>`;
   }
 
   // ================= GAME SCREEN =================
@@ -2136,6 +2361,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   }
 
   // ================= OVERLAYS =================
+  function deviceRows() {
+    return deviceList().map((d) => `<div class="dev-row"><span class="sdot ${d.online ? 'on' : 'off'}"></span>
+      <span class="dev-meta"><strong>${esc(d.name || t('phone'))}</strong><span>${t(d.online ? 'st_online' : 'st_offline')}</span></span>
+      <button class="close-btn" data-act="dev-remove" data-v="${esc(d.dev)}" aria-label="${t('remove')}">${ICON.close}</button></div>`).join('');
+  }
+
   function renderLayer() {
     const L = $('#layer');
     if (ui.handoff) {
@@ -2159,9 +2390,9 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     } else if (sh.type === 'menu') {
       const hostItems = isGuest()
         ? `<button class="btn btn-ghost" data-act="ask-leave">${t('leave')}</button>`
-        : `${hasDevices() || net.room ? `<button class="btn btn-ghost" data-act="phones">${t('phones_menu')}</button>` : ''}
+        : `${hosting() ? `<button class="btn btn-ghost" data-act="phones">${t('phones_menu')}</button>` : ''}
            <button class="btn btn-ghost" data-act="ask-redeal">${t('redeal')}</button>
-           <button class="btn btn-ghost" data-act="ask-quit">${t('quit')}</button>`;
+           <button class="btn btn-ghost" data-act="ask-quit">${t(hosting() ? 'lobby' : 'quit')}</button>`;
       body = head(t('menu')) + `<div class="btn-col">
         <button class="btn btn-primary" data-act="close">${t('back_game')}</button>
         <button class="btn btn-ghost" data-act="last" ${G().lastTrick ? '' : 'disabled'}>${t('last_trick')}</button>
@@ -2170,9 +2401,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         <button class="btn btn-ghost" data-act="toggle-sound">${t('opt_sound')}: ${S.settings.sound ? t('on') : t('off')}</button>
         ${hostItems}</div>`;
     } else if (sh.type === 'phones') {
-      body = head(t('phones_menu')) + `<div class="devs">${deviceRows()}</div>${roomBlock()}
-        <div class="btn-col"><button class="btn btn-ink" data-act="pair-qr">${t('add_qr')}<small>${t('add_qr_d')}</small></button>
-        ${net.room ? '' : `<button class="btn btn-ghost" data-act="room-open">${t('open_room')}<small>${t('open_room_d')}</small></button>`}</div>`;
+      const extra = S.settings.hostMode === 'online'
+        ? (net.room && net.room.status === 'open' ? `<div class="room-box"><span class="kicker">${t('lobby_code')}</span><div class="room-code">${net.room.code}</div><p class="hint">${esc(t('invite_d', { url: SITE }))}</p></div>` : `<p class="pair-status">${t('room_opening')}</p>`)
+        : `<button class="btn btn-primary" data-act="pair-qr">${t('add_phone')}</button>`;
+      body = head(t('phones_menu')) + `<div class="devs">${deviceRows()}</div>${extra}`;
     } else if (sh.type === 'last') {
       const lt = G().lastTrick;
       body = head(t('last_trick')) + (lt
@@ -2215,10 +2447,11 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       const w = m.wins.indexOf(best);
       matchBanner = `<p class="match-line" style="color:var(--wine);font-weight:700;font-size:16px">${t(teams ? 'match_won_pl' : 'match_won', { name: esc(sideName(w)) })}</p>`;
     }
+    const back = t(hosting() ? 'lobby' : 'setup');
     let buttons;
     if (isGuest()) buttons = `<button class="btn btn-ghost" data-act="ask-leave">${t('leave')}</button><button class="btn btn-primary" data-act="guest-next">${t(m.over ? 'new_match' : 'next_hand')}</button>`;
-    else if (m.over) buttons = `<button class="btn btn-ghost" data-act="quit">${t('setup')}</button><button class="btn btn-primary" data-act="new-match">${t('new_match')}</button>`;
-    else buttons = `<button class="btn btn-ghost" data-act="quit">${t('setup')}</button><button class="btn btn-primary" data-act="next-hand">${t('next_hand')}</button>`;
+    else if (m.over) buttons = `<button class="btn btn-ghost" data-act="quit">${back}</button><button class="btn btn-primary" data-act="new-match">${t('new_match')}</button>`;
+    else buttons = `<button class="btn btn-ghost" data-act="quit">${back}</button><button class="btn btn-primary" data-act="next-hand">${t('next_hand')}</button>`;
     return `<div class="result-banner"><span class="kicker">${t('hand_over', { n: m.hand })}</span><h2>${title}</h2></div>
       <div class="sides">${rows}</div>${matchLine}${matchBanner}<div class="btn-row">${buttons}</div>`;
   }
@@ -2232,14 +2465,22 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   }
 
   function startMatch() {
-    const st = S.settings, n = st.n;
-    const seats = st.seats.slice(0, n).map((s) => ({
-      name: (s.name.trim() || (s.remote ? devName(s.remote) : '')).slice(0, 16),
-      cpu: !!s.cpu && !s.remote, level: s.level || 'normal', remote: s.remote || null,
-    }));
-    if (!seats.some((s) => !s.cpu)) { ui.error = t('need_human'); renderSetup(); return; }
-    if (seats.some((s) => s.remote) && !seats.some((s) => !s.cpu && !s.remote)) { ui.error = t('need_local'); renderSetup(); return; }
-    if (seats.some((s) => s.remote && !devOnline(s.remote))) { ui.error = t('need_device'); renderSetup(); return; }
+    const st = S.settings, c = src(), n = c.n, host = hosting();
+    const seats = c.seats.slice(0, n).map((s, p) => {
+      const remote = host ? s.remote || null : null;
+      const local = !s.cpu && !remote && !(host && s.open);
+      return {
+        name: (s.name.trim() || (remote ? devName(remote) : host && local ? setupName(c, p) : '')).slice(0, 16),
+        cpu: !!s.cpu && !remote, level: s.level || 'normal', remote, open: host && s.open && !remote && !s.cpu,
+      };
+    });
+    const err = (msg) => { ui.error = msg; renderSetup(); };
+    const openIdx = seats.findIndex((s) => s.open);
+    if (openIdx >= 0) return err(t('open_seat_err', { n: openIdx + 1 }));
+    if (!seats.some((s) => !s.cpu)) return err(t('need_human'));
+    if (seats.some((s) => s.remote) && !seats.some((s) => !s.cpu && !s.remote)) return err(t('need_local'));
+    if (seats.some((s) => s.remote && !devOnline(s.remote))) return err(t('need_device'));
+    seats.forEach((s) => { delete s.open; });
     ui.error = '';
     S.session = {
       cfg: { n, seats, swap: st.swap, target: st.target },
@@ -2396,26 +2637,52 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     stopFlow(); S.session = null; ui.sheet = null; persist(); render(); showScreen('setup');
   }
 
-  // ================= HOST: phones =================
+  // ================= HOSTING =================
+  function startHosting(mode) {
+    if (S.settings.hostMode && S.settings.hostMode !== mode) endHosting();
+    if (!S.settings.hostMode) {
+      const L = S.settings.lobby;
+      L.n = 2;
+      L.seats = [0, 1, 2, 3].map((p) => blankSeat({ open: p > 0, name: p === 0 ? S.settings.myName : '' }));
+    }
+    S.settings.hostMode = mode;
+    ui.screen = 'host';
+    ui.error = '';
+    persist();
+    showScreen('setup');
+    if (mode === 'online' && !net.room) openRoom(S.settings.room);
+    keepAwake();
+  }
+
+  function endHosting() {
+    for (const d of deviceList()) {
+      if (d.link) { d.link.on('close', null); d.link.send({ t: 'bye' }); const l = d.link; setTimeout(() => l.close('host-ended'), 200); }
+    }
+    net.devices = {};
+    closeRoom();
+    S.settings.hostMode = null;
+    if (S.session && S.session.cfg.seats.some((s) => s.remote)) S.session = null; // a networked game cannot continue
+    ui.screen = 'home';
+    persist();
+    showScreen('setup');
+  }
+
   function sendTo(d, msg) { if (d && d.link && d.online) d.link.send(msg); }
 
   function lobbyFor(dev) {
-    const st = S.settings;
+    const L = S.settings.lobby;
     return {
-      t: 'lobby', host: hostName(), started: !!(S.session && S.session.G), n: st.n,
-      seats: st.seats.slice(0, st.n).map((s, p) => ({
-        name: nameFrom(st.seats, p) === t('seat', { n: p + 1 }) && s.remote ? devName(s.remote) : nameFrom(st.seats, p),
-        cpu: !!s.cpu && !s.remote, mine: s.remote === dev,
+      t: 'lobby', host: hostName(), started: !!(S.session && S.session.G), n: L.n, mode: S.settings.hostMode, code: net.room && net.room.code,
+      seats: L.seats.slice(0, L.n).map((s, p) => ({
+        name: setupName(L, p), cpu: !!s.cpu && !s.remote, mine: s.remote === dev, open: !!s.open && !s.remote && !s.cpu,
+        host: !s.cpu && !s.remote && !s.open,
       })),
     };
   }
 
   function broadcastLobby() {
-    if (isGuest()) return;
-    for (const d of deviceList()) {
-      if (S.session && S.session.G) continue; // a game is on: devices get views instead
-      sendTo(d, lobbyFor(d.dev));
-    }
+    if (isGuest() || !hosting() || (S.session && S.session.G)) return;
+    for (const d of deviceList()) sendTo(d, lobbyFor(d.dev));
   }
 
   function viewFor(dev) {
@@ -2465,17 +2732,15 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   function adoptLink(link, via) {
     let adopted = false;
     link.on('message', (m) => {
-      if (!adopted) {
-        if (m.t !== 'hello') return;
-        if (m.v !== N.PROTOCOL) { link.send({ t: 'error', code: 'ver' }); setTimeout(() => link.close('version'), 300); return; }
-        adopted = true;
-        registerDevice(link, via, String(m.dev || '').slice(0, 24), String(m.name || '').slice(0, 16));
-        return;
-      }
+      if (adopted || m.t !== 'hello') return;
+      if (m.v !== N.PROTOCOL) { link.send({ t: 'error', code: 'ver' }); setTimeout(() => link.close('version'), 300); return; }
+      adopted = true;
+      registerDevice(link, via, String(m.dev || '').slice(0, 24), String(m.name || '').slice(0, 16));
     });
   }
 
   function registerDevice(link, via, dev, nm) {
+    if (!hosting()) { link.send({ t: 'bye' }); setTimeout(() => link.close('not-hosting'), 200); return; }
     const prev = net.devices[dev];
     if (prev && prev.link && prev.link !== link) { prev.link.on('close', null); prev.link.close('replaced'); }
     const d = { dev, name: nm || (prev && prev.name) || '', link, online: true, via };
@@ -2488,18 +2753,17 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       onDevicesChanged();
     });
     link.send({ t: 'welcome', host: hostName() });
-    // A new phone takes the first free human seat with no name, which is what people expect for 2-player games.
-    if (!prev && !(S.session && S.session.G)) {
-      const st = S.settings;
-      if (!st.seats.slice(0, st.n).some((s) => s.remote === dev)) {
-        for (let p = 1; p < st.n; p++) {
-          const s = st.seats[p];
-          if (!s.cpu && !s.remote && !s.name.trim()) { s.remote = dev; break; }
-        }
+    // A new phone takes the first open seat; the lobby grows up to 4 players if every seat is taken.
+    if (!(S.session && S.session.G)) {
+      const L = S.settings.lobby;
+      if (!L.seats.slice(0, L.n).some((s) => s.remote === dev)) {
+        let p = L.seats.slice(0, L.n).findIndex((s) => s.open && !s.remote && !s.cpu);
+        if (p < 0 && L.n < 4) { p = L.n; L.n++; L.seats[p] = blankSeat({ open: true }); }
+        if (p >= 0) L.seats[p].remote = dev;
       }
     }
     persist();
-    if (net.pair && net.pair.kind === 'host-qr' && net.pair.link === link) closePair();
+    if (net.pair && net.pair.kind === 'host-qr' && net.pair.link === link) pairDone(d);
     onDevicesChanged();
     sendState(d);
     keepAwake();
@@ -2513,6 +2777,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   function onHostMessage(d, m) {
     const g = S.session && S.session.G;
     switch (m.t) {
+      case 'hello': // repeated hello after a lost first message: just confirm again
+        d.link.send({ t: 'welcome', host: hostName() });
+        sendState(d);
+        break;
       case 'name':
         d.name = String(m.name || '').slice(0, 16);
         if (d.name) S.settings.knownDevs[d.dev] = d.name;
@@ -2550,18 +2818,19 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
   function removeDevice(dev) {
     const d = net.devices[dev];
-    if (d && d.link) { d.link.on('close', null); d.link.send({ t: 'bye' }); setTimeout(() => d.link && d.link.close('removed'), 200); }
+    if (d && d.link) { d.link.on('close', null); d.link.send({ t: 'bye' }); const l = d.link; setTimeout(() => l.close('removed'), 200); }
     delete net.devices[dev];
-    S.settings.seats.forEach((s) => { if (s.remote === dev) s.remote = null; });
+    S.settings.lobby.seats.forEach((s) => { if (s.remote === dev) s.remote = null; });
     persist();
     onDevicesChanged();
   }
 
-  // ---------- host: room code ----------
+  // ---------- host: online lobby (room code) ----------
   async function openRoom(code, attempt) {
     attempt = attempt || 0;
     const fresh = !code;
     code = code || N.roomCode();
+    if (net.room && net.room.broker) net.room.broker.close();
     net.room = { code, status: 'opening', broker: null };
     onDevicesChanged();
     const broker = new N.Broker(N.roomPeerId(code), N.brokerUrl());
@@ -2571,19 +2840,30 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       if (!net.room || net.room.code !== code) return;
       if (e.message === 'id-taken') {
         if (fresh && attempt < 3) return openRoom(null, attempt + 1);
+        // Our previous connection may still be registered on the server for a few seconds.
         if (attempt < 20) { setTimeout(() => { if (net.room && net.room.code === code) openRoom(code, attempt + 1); }, 3000); return; }
       }
       net.room = { code, status: 'error', err: t('broker_fail') };
       onDevicesChanged();
       return;
     }
-    if (!net.room || net.room.code !== code) { broker.close(); return; }
+    if (!net.room || net.room.code !== code || !hosting()) { broker.close(); return; }
     net.room = { code, status: 'open', broker };
     S.settings.room = code;
     persist();
-    const pending = {};
+    const pending = {}, relays = {};
     broker.on('message', async (m) => {
-      if (m.type === 'OFFER' && m.payload && m.payload.sdp) {
+      if (m.type === 'CANDIDATE' && m.payload && m.payload.r) {
+        // Relayed game traffic from a phone that could not connect directly.
+        let rl = relays[m.src];
+        if (m.payload.r.t === 'relay-close') { if (rl) { rl.close('peer-closed'); delete relays[m.src]; } return; }
+        if (!rl || rl.closed) {
+          rl = relays[m.src] = new N.RelayLink(broker, m.src);
+          adoptLink(rl, 'room');
+          if (pending[m.src]) pending[m.src].close('relay');
+        }
+        rl.receive(m.payload.r);
+      } else if (m.type === 'OFFER' && m.payload && m.payload.sdp) {
         if (m.payload.v !== N.PROTOCOL) return;
         const link = new N.Link({ trickle: true, ice: N.STUN });
         pending[m.src] = link;
@@ -2594,12 +2874,16 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
           broker.send('ANSWER', m.src, { sdp });
           await link.whenOpen(30000);
         } catch (e) { link.close('failed'); }
-        delete pending[m.src];
-      } else if (m.type === 'CANDIDATE' && pending[m.src] && m.payload) {
+        if (pending[m.src] === link) delete pending[m.src];
+      } else if (m.type === 'CANDIDATE' && pending[m.src] && m.payload && m.payload.c) {
         pending[m.src].addCandidate(m.payload.c);
+      } else if (m.type === 'LEAVE' && relays[m.src]) {
+        relays[m.src].close('peer-closed');
+        delete relays[m.src];
       }
     });
     broker.on('drop', () => {
+      Object.values(relays).forEach((rl) => rl.close('peer-closed'));
       if (net.room && net.room.code === code) setTimeout(() => { if (net.room && net.room.code === code) openRoom(code, 1); }, 2000);
     });
     onDevicesChanged();
@@ -2610,10 +2894,20 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     net.room = null;
     S.settings.room = null;
     persist();
-    onDevicesChanged();
   }
 
-  // ================= PAIRING SCREENS =================
+  async function shareInvite(btn) {
+    const r = net.room;
+    if (!r || r.status !== 'open') return;
+    const url = joinUrl(r.code);
+    const text = `Briscola: ${t('lobby_code')} ${r.code}`;
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Briscola', text, url }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(url); btn.textContent = t('link_copied'); } catch (e) { btn.textContent = url; }
+  }
+
+  // ================= NEARBY: QR PAIRING =================
   function pairLayer() { return $('#pair-layer'); }
 
   function closePair() {
@@ -2621,6 +2915,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     if (!P) return;
     if (P.scanner) P.scanner.stop();
     if (P.link && !P.adopted && !P.link.open) P.link.close('cancelled');
+    clearTimeout(P.doneTimer);
     net.pair = null;
     pairLayer().innerHTML = '';
   }
@@ -2628,31 +2923,33 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   function pairSet(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; }
   function pairShow(id, show) { const el = document.getElementById(id); if (el) el.hidden = !show; }
 
+  // Host side: step 1 shows our code, step 2 scans the guest's reply.
   async function hostPairQR() {
     closePair();
     if (ui.sheet && ui.sheet.type === 'phones') { ui.sheet = null; render(); }
-    const P = net.pair = { kind: 'host-qr', link: null, scanner: null, busy: false };
+    const P = net.pair = { kind: 'host-qr', link: null, scanner: null, busy: false, step: 1 };
     pairLayer().innerHTML = `<div class="overlay"><div class="sheet pair" role="dialog" aria-modal="true">
-      <div class="sheet-head"><h2>${t('pair_title')}</h2><button class="close-btn" data-act="pair-close" aria-label="${t('close')}">${ICON.close}</button></div>
-      <p class="step"><b>1</b><span>${t('pair_s1')}</span></p>
-      <div class="qr-box" id="pq-qr"><span class="hint">${t('connecting')}</span></div>
-      <p class="step"><b>2</b><span>${t('pair_s2')}</span></p>
-      <div class="cam"><video id="pq-video" playsinline muted></video></div>
-      <p class="pair-status" id="pq-status" role="status">${t('cam_start')}</p>
+      <div class="sheet-head"><h2>${t('add_phone')}</h2><button class="close-btn" data-act="pair-close" aria-label="${t('close')}">${ICON.close}</button></div>
+      <div id="hq-step1" class="pair-step"><span class="stepper">${t('step_of', { i: 1 })}</span><h3>${t('hq_s1')}</h3><p class="hint">${t('hq_s1_d')}</p>
+        <div class="qr-box" id="pq-qr"><span class="hint">${t('connecting')}</span></div>
+        <button class="btn btn-primary" data-act="pair-next">${t('hq_next')}</button></div>
+      <div id="hq-step2" class="pair-step" hidden><span class="stepper">${t('step_of', { i: 2 })}</span><h3>${t('hq_s2')}</h3><p class="hint">${t('hq_s2_d')}</p></div>
+      <div class="cam peek" id="hq-cam"><video id="pq-video" playsinline muted></video></div>
+      <p class="pair-status" id="pq-status" role="status"></p>
+      <div id="hq-back" hidden><button class="btn btn-ghost" data-act="pair-back">${t('hq_back')}</button></div>
       <details><summary>${t('trouble')}</summary>
         <div class="codebox"><textarea id="pq-mycode" readonly rows="3"></textarea><button class="btn btn-ghost" data-act="copy" data-v="pq-mycode">${t('copy')}</button></div>
         <label class="field"><span>${t('paste_reply')}</span><textarea id="pq-paste" rows="3"></textarea></label>
         <button class="btn btn-primary" data-act="pair-paste">${t('connect')}</button>
       </details></div></div>`;
-    // Camera first: with camera access granted, browsers share the phone's real LAN address, which
-    // makes the offline connection more reliable than the anonymised addresses used otherwise.
+    // Camera first, even though its picture is only shown in step 2: with camera access granted,
+    // browsers share the phone's real LAN address, which makes the offline connection more reliable.
     try {
       P.scanner = await N.startScanner($('#pq-video'), (text) => hostGotReply(P, text));
       if (net.pair !== P) { P.scanner.stop(); return; }
-      pairSet('pq-status', t('cam_on'));
     } catch (e) {
       if (net.pair !== P) return;
-      pairSet('pq-status', t('cam_denied'));
+      P.camError = true;
     }
     try {
       const link = P.link = new N.Link({ trickle: false });
@@ -2660,7 +2957,6 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       const sdp = await link.createOffer();
       const code = await N.pack({ k: 'o', v: N.PROTOCOL, s: sdp, h: hostName() });
       if (net.pair !== P) { link.close('cancelled'); return; }
-      P.code = code;
       pairSet('pq-qr', N.qrSvg(code));
       const ta = $('#pq-mycode'); if (ta) ta.value = code;
     } catch (e) {
@@ -2668,61 +2964,79 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     }
   }
 
+  function hostPairStep(step) {
+    const P = net.pair;
+    if (!P || P.kind !== 'host-qr') return;
+    P.step = step;
+    pairShow('hq-step1', step === 1);
+    pairShow('hq-step2', step === 2);
+    pairShow('hq-back', step === 2);
+    const cam = $('#hq-cam');
+    if (cam) cam.classList.toggle('peek', step === 1);
+    pairSet('pq-status', step === 2 ? (P.camError ? t('cam_denied') : t('cam_on')) : '');
+  }
+
   async function hostGotReply(P, text) {
     if (net.pair !== P || P.busy || !P.link) return;
     // The camera reports the same code several times a second: claim the attempt before any await.
     P.busy = true;
     let obj;
-    try { obj = await N.unpack(text); } catch (e) { P.busy = false; pairSet('pq-status', t('bad_code')); return; }
+    try { obj = await N.unpack(text); } catch (e) { P.busy = false; if (P.step === 2) pairSet('pq-status', t('bad_code')); return; }
     if (obj.k !== 'a') { P.busy = false; return; } // probably our own code reflected back; keep scanning
     if (obj.v !== N.PROTOCOL) { P.busy = false; pairSet('pq-status', t('ver_mismatch')); return; }
+    if (P.step !== 2) hostPairStep(2);
     pairSet('pq-status', t('connecting'));
     try {
       await P.link.acceptAnswer(obj.s);
       await P.link.whenOpen(20000);
       P.adopted = true;
-      // registerDevice closes the pairing screen once the guest says hello.
+      // registerDevice finishes the pairing once the guest says hello.
     } catch (e) {
       if (net.pair !== P) return;
       P.busy = false;
-      pairSet('pq-status', `${t('pair_fail')} <button class="btn btn-ghost" data-act="pair-qr">${t('add_qr')}</button>`);
+      pairSet('pq-status', `${t('pair_fail')} <button class="btn btn-ghost" data-act="pair-qr">${t('add_phone')}</button>`);
     }
   }
 
-  function openJoin(prefillRoom) {
+  function pairDone(d) {
+    const P = net.pair;
+    if (!P) return;
+    if (P.scanner) { P.scanner.stop(); P.scanner = null; }
+    P.adopted = true;
+    pairShow('hq-step1', false); pairShow('hq-step2', false); pairShow('hq-back', false); pairShow('hq-cam', false);
+    pairSet('pq-status', `<span class="ok-mark">✓</span>${esc(t('joined_ok', { name: d.name || t('phone') }))}`);
+    P.doneTimer = setTimeout(() => { if (net.pair === P) closePair(); }, 1100);
+  }
+
+  // Guest side: step 1 scans the host's code, step 2 shows our reply.
+  function openNearbyJoin() {
     closePair();
     const P = net.pair = { kind: 'join', link: null, scanner: null, busy: false };
-    const offline = !N;
     pairLayer().innerHTML = `<div class="overlay"><div class="sheet pair" role="dialog" aria-modal="true">
-      <div class="sheet-head"><h2>${t('join_title')}</h2><button class="close-btn" data-act="pair-close" aria-label="${t('close')}">${ICON.close}</button></div>
-      ${offline ? `<p class="error">${t('no_webrtc')}</p>` : ''}
-      <label class="field"><span>${t('your_name')}</span><input id="pj-name" data-myname maxlength="16" autocomplete="off" value="${esc(S.settings.myName)}"></label>
-      <button class="btn btn-ink" data-act="join-scan" id="pj-scan-btn">${t('scan_host')}<small>${t('scan_host_d')}</small></button>
-      <div class="cam" id="pj-cam" hidden><video id="pj-video" playsinline muted></video></div>
-      <div class="qr-box" id="pj-reply" hidden></div>
-      <p class="pair-status" id="pj-status" role="status"></p>
+      <div class="sheet-head"><h2>${t('join_nearby_t')}</h2><button class="close-btn" data-act="pair-close" aria-label="${t('close')}">${ICON.close}</button></div>
+      <p class="hint">${t('join_nearby_d')}</p>
+      <label class="field"><span>${t('your_name')}</span><input id="pj-name" data-myname maxlength="16" autocomplete="off" autocapitalize="words" value="${esc(S.settings.myName)}"></label>
+      <div id="nj-step1" class="pair-step"><span class="stepper">${t('step_of', { i: 1 })}</span><h3>${t('nj_s1')}</h3><p class="hint">${t('nj_s1_d')}</p>
+        <div class="cam" id="pj-cam"><video id="pj-video" playsinline muted></video></div></div>
+      <div id="nj-step2" class="pair-step" hidden><span class="stepper">${t('step_of', { i: 2 })}</span><h3>${t('nj_s2')}</h3>
+        <div class="qr-box" id="pj-reply"></div></div>
+      <p class="pair-status" id="pj-status" role="status">${t('cam_start')}</p>
       <details><summary>${t('trouble')}</summary>
         <label class="field"><span>${t('paste_host')}</span><textarea id="pj-paste" rows="3"></textarea></label>
         <button class="btn btn-primary" data-act="join-paste">${t('use_code')}</button>
         <div id="pj-mycode-wrap" hidden><label class="field"><span>${t('your_reply')}</span></label><div class="codebox"><textarea id="pj-mycode" readonly rows="3"></textarea><button class="btn btn-ghost" data-act="copy" data-v="pj-mycode">${t('copy')}</button></div></div>
       </details>
-      <h3>${t('or_room')}</h3>
-      <div class="room-join"><input id="pj-room" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCDE" value="${esc(prefillRoom || '')}"><button class="btn btn-primary" data-act="join-room">${t('join')}</button></div>
-      <p class="pair-status" id="pj-room-status" role="status"></p>
     </div></div>`;
+    startJoinCamera(P);
   }
 
-  async function joinScan() {
-    const P = net.pair;
-    if (!P || P.kind !== 'join' || P.scanner) return;
-    pairShow('pj-cam', true);
-    pairShow('pj-scan-btn', false);
-    pairSet('pj-status', t('cam_start'));
+  async function startJoinCamera(P) {
     try {
       P.scanner = await N.startScanner($('#pj-video'), (text) => guestGotOffer(P, text));
       if (net.pair !== P) { P.scanner.stop(); return; }
-      pairSet('pj-status', t('cam_on'));
+      if (!P.busy) pairSet('pj-status', t('cam_on'));
     } catch (e) {
+      if (net.pair !== P) return;
       pairSet('pj-status', t('cam_denied'));
       pairShow('pj-cam', false);
     }
@@ -2741,13 +3055,13 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       // The answer is created while the camera is still on, for the same LAN-address reason as on the host.
       const sdp = await link.createAnswer(obj.s);
       if (P.scanner) { P.scanner.stop(); P.scanner = null; }
-      pairShow('pj-cam', false);
       const code = await N.pack({ k: 'a', v: N.PROTOCOL, s: sdp, d: DEV, n: S.settings.myName });
+      pairShow('nj-step1', false);
       pairSet('pj-reply', N.qrSvg(code));
-      pairShow('pj-reply', true);
+      pairShow('nj-step2', true);
       const ta = $('#pj-mycode'); if (ta) ta.value = code;
       pairShow('pj-mycode-wrap', true);
-      pairSet('pj-status', t('join_s2'));
+      pairSet('pj-status', t('nj_wait'));
       await link.whenOpen(180000);
       if (net.pair !== P) return;
       P.adopted = true;
@@ -2760,55 +3074,88 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     }
   }
 
-  /** Room-code join. With `silent`, used for automatic reconnection (no pairing screen). */
+  // ================= ONLINE: JOIN WITH A CODE =================
+  /** Join an online lobby. Tries a direct connection first and falls back to relaying through the
+   *  signalling server, so two phones on mobile data still connect. With `silent`, used for reconnection. */
   async function joinRoom(code, silent) {
     code = N.normaliseRoom(code);
-    const status = (k) => { if (!silent) pairSet('pj-room-status', t(k)); };
+    const status = (k) => { if (!silent) { ui.joinStatus = t(k); pairSet('pj-room-status', esc(ui.joinStatus)); } };
     if (code.length !== 5) { status('room_fail'); return false; }
+    if (!silent) { net.joining = true; ui.joinCode = code; const b = $('#join-btn'); if (b) { b.disabled = true; b.textContent = t('joining'); } }
+    const done = (ok) => {
+      if (!silent) { net.joining = false; const b = $('#join-btn'); if (b) { b.disabled = false; b.textContent = t('join'); } }
+      return ok;
+    };
     status('connecting');
     const hostId = N.roomPeerId(code);
     const broker = new N.Broker(`bg-${DEV}-${Math.random().toString(36).slice(2, 6)}`, N.brokerUrl());
-    try { await broker.connect(8000); } catch (e) { status('broker_fail'); return false; }
-    const link = new N.Link({ trickle: true, ice: N.STUN });
-    let answered = false, expired = false;
-    link.on('candidate', (c) => broker.send('CANDIDATE', hostId, { c }));
+    try { await broker.connect(8000); } catch (e) { status('broker_fail'); return done(false); }
+
+    let link = null, relay = null, answered = false, expired = false, relayAck = null;
     broker.on('message', (m) => {
-      if (m.src !== hostId && m.type !== 'EXPIRE') return;
-      if (m.type === 'ANSWER' && m.payload) { answered = true; link.acceptAnswer(m.payload.sdp).catch(() => link.close('bad-answer')); }
-      else if (m.type === 'CANDIDATE' && m.payload) link.addCandidate(m.payload.c);
-      else if (m.type === 'EXPIRE' || m.type === 'ERROR') { expired = true; link.close('expired'); }
+      if (m.type === 'EXPIRE') { expired = true; if (link) link.close('expired'); return; }
+      if (m.src !== hostId) return;
+      if (m.type === 'CANDIDATE' && m.payload && m.payload.r) {
+        if (!relay) return;
+        if (m.payload.r.t === 'relay-close') relay.close('peer-closed');
+        else { relay.receive(m.payload.r); if (relayAck) relayAck(); }
+      } else if (m.type === 'ANSWER' && m.payload && link) {
+        answered = true;
+        link.acceptAnswer(m.payload.sdp).catch(() => link.close('bad-answer'));
+      } else if (m.type === 'CANDIDATE' && m.payload && m.payload.c && link) {
+        link.addCandidate(m.payload.c);
+      } else if (m.type === 'LEAVE' && relay) relay.close('peer-closed');
     });
-    try {
-      const sdp = await link.createOffer();
-      broker.send('OFFER', hostId, { sdp, v: N.PROTOCOL, dev: DEV });
-      await link.whenOpen(answered ? 20000 : 25000);
-    } catch (e) {
-      broker.close();
-      link.close('failed');
-      status(answered ? 'p2p_fail' : expired || !answered ? 'room_fail' : 'pair_fail');
-      return false;
+
+    // 1. Direct connection.
+    if (N.directAllowed()) {
+      link = new N.Link({ trickle: true, ice: N.STUN });
+      link.on('candidate', (c) => broker.send('CANDIDATE', hostId, { c }));
+      try {
+        const sdp = await link.createOffer();
+        broker.send('OFFER', hostId, { sdp, v: N.PROTOCOL, dev: DEV });
+        await link.whenOpen(9000);
+        broker.close();
+        S.settings.lastRoom = code;
+        persist();
+        becomeGuest(link, 'room', null, code);
+        return done(true);
+      } catch (e) {
+        link.close('fallback');
+        link = null;
+        // No answer at all means nobody is hosting that code.
+        if (expired || !answered) { broker.close(); status('room_fail'); return done(false); }
+      }
     }
-    broker.close();
-    if (!silent) closePair();
+
+    // 2. Relay through the signalling server.
+    relay = new N.RelayLink(broker, hostId);
+    const welcomed = new Promise((res) => { relayAck = res; });
+    relay.send({ t: 'hello', v: N.PROTOCOL, dev: DEV, name: S.settings.myName });
+    const ok = await Promise.race([welcomed.then(() => true), sleep(8000).then(() => false)]);
+    relayAck = null;
+    if (!ok || expired) { relay.close('failed'); broker.close(); status(expired ? 'room_fail' : 'p2p_fail'); return done(false); }
     S.settings.lastRoom = code;
     persist();
-    becomeGuest(link, 'room', null, code);
-    return true;
+    becomeGuest(relay, 'room', null, code, broker);
+    return done(true);
   }
 
   // ================= GUEST =================
-  function becomeGuest(link, mode, hostNm, code) {
+  function becomeGuest(link, mode, hostNm, code, broker) {
     if (!isGuest()) {
       S.savedSession = S.session;
       stopFlow();
     }
+    if (net.guest && net.guest.broker && net.guest.broker !== broker) net.guest.broker.close();
     net.role = 'guest';
     const prevLobby = net.guest && net.guest.lobby;
-    net.guest = { link, mode, code, hostName: hostNm || (net.guest && net.guest.hostName) || '', status: 'online', lobby: prevLobby || null };
-    link.on('message', onGuestMessage);
-    link.on('close', () => { if (net.guest && net.guest.link === link) onGuestLost(); });
-    // Say hello until the host answers: the first message on a fresh channel is occasionally lost.
+    net.guest = { link, mode, code, broker: broker || null, hostName: hostNm || (net.guest && net.guest.hostName) || '', status: 'online', lobby: prevLobby || null };
     const gst = net.guest;
+    link.on('message', onGuestMessage);
+    link.on('close', () => { if (net.guest === gst && gst.link === link) onGuestLost(); });
+    if (broker) broker.on('drop', () => { if (net.guest === gst && gst.link === link) link.close('broker-drop'); });
+    // Say hello until the host answers: the first message on a fresh channel is occasionally lost.
     const hello = () => {
       if (net.guest !== gst || gst.link !== link || gst.welcomed || link.closed) return;
       link.send({ t: 'hello', v: N.PROTOCOL, dev: DEV, name: S.settings.myName });
@@ -2824,6 +3171,8 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     if (!gst) return;
     gst.status = 'lost';
     gst.link = null;
+    gst.welcomed = false;
+    if (gst.broker) { gst.broker.close(); gst.broker = null; }
     ui.sent = false;
     if (!$('#setup').hidden) renderSetup(); else render();
     if (gst.mode === 'room') retryRoom(gst);
@@ -2841,11 +3190,13 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     const gst = net.guest;
     S.settings.lastRoom = null;
     if (gst && gst.link) { gst.link.send({ t: 'leave' }); const l = gst.link; setTimeout(() => l.close('left'), 150); }
+    if (gst && gst.broker) { const b = gst.broker; setTimeout(() => b.close(), 300); }
     net.role = null;
     net.guest = null;
     S.session = S.savedSession;
     S.savedSession = null;
     ui.viewer = -1; ui.handoff = null; ui.sheet = notice ? { type: 'notice', text: notice } : null; ui.sent = false;
+    ui.screen = 'home';
     persist();
     showScreen('setup');
     render();
@@ -2855,7 +3206,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     const gst = net.guest;
     if (!gst) return;
     switch (m.t) {
-      case 'welcome': gst.hostName = m.host; gst.status = 'online'; gst.welcomed = true; break;
+      case 'welcome': gst.hostName = m.host; gst.status = 'online'; gst.welcomed = true; if (!$('#setup').hidden) renderSetup(); break;
       case 'lobby':
         gst.lobby = m;
         gst.hostName = m.host;
@@ -2897,7 +3248,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     ui.justDrawn = fx.drawn && ui.viewer >= 0 && fx.drawn[ui.viewer] != null ? [fx.drawn[ui.viewer]] : [];
 
     if (fx.played != null) sfx.play();
-    if (fx.toast && fx.toast.k === 'takes' && !(prev && prev.phase === 'trickDone' && ui.lastToastTricks === g.tricks)) { sfx.win(); ui.lastToastTricks = g.tricks; }
+    if (fx.toast && fx.toast.k === 'takes' && ui.lastToastTricks !== g.tricks) { sfx.win(); ui.lastToastTricks = g.tricks; }
     if (myTurnSeat >= 0 && !(prev && prev.turn === g.turn && prev.phase === 'play')) sfx.turn();
 
     if (g.phase === 'over') { if (!ui.sheet || ui.sheet.type !== 'summary') ui.sheet = { type: 'summary' }; ui.handoff = null; }
@@ -2929,14 +3280,16 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   }
 
   function setSeatKind(p, kind) {
-    const s = S.settings.seats[p];
-    if (kind === 'c') { s.cpu = true; s.remote = null; }
-    else if (kind === 'h') { s.cpu = false; s.remote = null; }
-    else if (kind === 'r') {
-      s.cpu = false;
-      const used = new Set(S.settings.seats.slice(0, S.settings.n).map((x) => x.remote).filter(Boolean));
-      const free = deviceList().find((d) => !used.has(d.dev)) || deviceList()[0];
-      s.remote = s.remote || (free ? free.dev : null);
+    const c = src(), s = c.seats[p];
+    if (kind === 'c') { s.cpu = true; s.remote = null; s.open = false; }
+    else if (kind === 'h') { s.cpu = false; s.remote = null; s.open = false; }
+    else if (kind === 'o') {
+      s.cpu = false; s.open = true;
+      if (!s.remote) {
+        const used = new Set(c.seats.slice(0, c.n).map((x) => x.remote).filter(Boolean));
+        const free = deviceList().find((d) => d.online && !used.has(d.dev));
+        s.remote = free ? free.dev : null;
+      }
     }
   }
 
@@ -2964,7 +3317,20 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       persist(); renderSetup(); return;
     }
     switch (act) {
-      case 'n': st.n = +v; ui.error = ''; break;
+      // ----- navigation -----
+      case 'go-home': ui.screen = 'home'; ui.error = ''; ui.joinStatus = ''; renderSetup(); return;
+      case 'go-local': ui.screen = 'local'; ui.error = ''; renderSetup(); return;
+      case 'host-online': startHosting('online'); return;
+      case 'host-nearby': startHosting('nearby'); return;
+      case 'join-online': ui.screen = 'join'; ui.joinStatus = ''; renderSetup(); return;
+      case 'join-nearby': openNearbyJoin(); return;
+      case 'host-end':
+        if (hasDevices()) { ui.sheet = { type: 'confirm', text: 'confirm_end', yes: 'end_lobby', act: 'host-end-yes' }; render(); }
+        else endHosting();
+        return;
+      case 'host-end-yes': ui.sheet = null; render(); endHosting(); return;
+      // ----- setup -----
+      case 'n': src().n = +v; ui.error = ''; break;
       case 'swap': st.swap = +v; break;
       case 'target': st.target = +v; break;
       case 'speed': st.speed = v; break;
@@ -2978,6 +3344,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         if (!$('#setup').hidden) renderSetup();
         render(); return;
       case 'rules': ui.sheet = { type: 'rules' }; render(); return;
+      // ----- game -----
       case 'menu': ui.selected = null; ui.sheet = { type: 'menu' }; render(); return;
       case 'phones': ui.sheet = { type: 'phones' }; render(); return;
       case 'last': ui.sheet = { type: 'last' }; render(); return;
@@ -3011,19 +3378,18 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         ui.drawnAll = g.hands.map((_, q) => (q === ui.viewer ? took : null));
         persist(); render(); return;
       }
-      // ----- phones -----
+      // ----- connections -----
       case 'pair-qr': hostPairQR(); return;
+      case 'pair-next': hostPairStep(2); return;
+      case 'pair-back': hostPairStep(1); return;
       case 'pair-close': closePair(); return;
-      case 'pair-paste': { const P = net.pair; const ta = $('#pq-paste'); if (P && ta && ta.value.trim()) hostGotReply(P, ta.value); return; }
+      case 'pair-paste': { const P = net.pair; const ta = $('#pq-paste'); if (P && ta && ta.value.trim()) { if (P.step !== 2) hostPairStep(2); hostGotReply(P, ta.value); } return; }
       case 'copy': copyFrom(v); el.textContent = t('copied'); return;
-      case 'room-open': if (ui.sheet && ui.sheet.type !== 'phones') ui.sheet = null; openRoom(); return;
-      case 'room-close': closeRoom(); return;
+      case 'room-retry': openRoom(S.settings.room); return;
+      case 'share-link': shareInvite(el); return;
       case 'dev-remove': removeDevice(v); return;
-      case 'join-open': openJoin(''); return;
-      case 'rejoin': openJoin(S.settings.lastRoom); joinRoom(S.settings.lastRoom, false); return;
-      case 'join-scan': joinScan(); return;
       case 'join-paste': { const P = net.pair; const ta = $('#pj-paste'); if (P && ta && ta.value.trim()) guestGotOffer(P, ta.value); return; }
-      case 'join-room': { const inp = $('#pj-room'); if (inp) joinRoom(inp.value, false); return; }
+      case 'join-room': { const inp = $('#pj-room'); if (inp && !net.joining) joinRoom(inp.value, false); return; }
       default: return;
     }
     persist();
@@ -3033,7 +3399,9 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   document.addEventListener('input', (ev) => {
     const el = ev.target;
     if (el.dataset.name != null) {
-      S.settings.seats[+el.dataset.name].name = el.value;
+      const p = +el.dataset.name, s = src().seats[p];
+      s.name = el.value;
+      if (hosting() && !s.cpu && !s.remote && !s.open) S.settings.myName = el.value.slice(0, 16);
       persist();
       // Update the team hint in place: re-rendering here would swallow the next tap (e.g. on Deal).
       const h = document.getElementById('seat-hint');
@@ -3042,16 +3410,15 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       S.settings.myName = el.value.slice(0, 16);
       persist();
     } else if (el.id === 'pj-room') {
-      const caret = el.value.length;
       el.value = N.normaliseRoom(el.value);
-      if (caret >= 5) el.setSelectionRange(5, 5);
+      ui.joinCode = el.value;
     }
   });
   document.addEventListener('change', (ev) => {
     const el = ev.target;
     if (el.dataset.set) { S.settings[el.dataset.set] = el.checked; persist(); broadcastLobby(); }
-    else if (el.dataset.level != null) { S.settings.seats[+el.dataset.level].level = el.value; persist(); }
-    else if (el.dataset.dev != null) { S.settings.seats[+el.dataset.dev].remote = el.value; persist(); renderSetup(); }
+    else if (el.dataset.level != null) { src().seats[+el.dataset.level].level = el.value; persist(); }
+    else if (el.dataset.dev != null) { const s = src().seats[+el.dataset.dev]; s.remote = el.value || null; s.open = true; persist(); renderSetup(); }
     else if (el.dataset.name != null) broadcastLobby();
     else if (el.dataset.myname != null && isGuest()) guestSend({ t: 'name', name: S.settings.myName });
   });
@@ -3060,7 +3427,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       if (net.pair) closePair();
       else if (ui.sheet && ui.sheet.type !== 'summary') { ui.sheet = null; render(); }
     }
-    if (ev.key === 'Enter' && ev.target.id === 'pj-room') joinRoom(ev.target.value, false);
+    if (ev.key === 'Enter' && ev.target.id === 'pj-room' && !net.joining) joinRoom(ev.target.value, false);
   });
 
   // ================= BOOT =================
@@ -3068,26 +3435,35 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     const saved = (hotData && hotData.settings) ? hotData : store.load();
     if (saved && saved.settings) {
       S.settings = Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), saved.settings);
-      if (!Array.isArray(S.settings.seats) || S.settings.seats.length < 4) S.settings.seats = JSON.parse(JSON.stringify(DEFAULTS.seats));
-      S.settings.seats.forEach((s) => { if (s.remote === undefined) s.remote = null; });
+      const fix = (c) => {
+        if (!c || !Array.isArray(c.seats) || c.seats.length < 4) return null;
+        c.seats = c.seats.map((s) => blankSeat(s));
+        return c;
+      };
+      if (!fix(S.settings)) { S.settings.n = 2; S.settings.seats = JSON.parse(JSON.stringify(DEFAULTS.seats)); }
+      S.settings.seats.forEach((s) => { s.remote = null; s.open = false; });
+      if (!fix(S.settings.lobby)) S.settings.lobby = JSON.parse(JSON.stringify(DEFAULTS.lobby));
       if (!S.settings.knownDevs) S.settings.knownDevs = {};
       if (saved.session && saved.session.G && saved.session.G.v === 1) S.session = saved.session;
     }
-    showScreen('setup');
+    if (!N) S.settings.hostMode = null;
+    ui.screen = S.settings.hostMode ? 'host' : 'home';
+    let join = null;
     if (N) {
-      let join = null;
       try {
         const q = new URLSearchParams(location.search);
         join = q.get('join');
         if (join) { q.delete('join'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash); }
       } catch (e) { /* ignore */ }
-      if (join) openJoin(N.normaliseRoom(join));
-      else if (S.settings.room) openRoom(S.settings.room); // reopen so guests can reconnect after a reload
     }
+    if (join && !S.settings.hostMode) { ui.screen = 'join'; ui.joinCode = N.normaliseRoom(join); }
+    else if (!S.settings.hostMode && S.settings.lastRoom && N) { ui.screen = 'join'; ui.joinCode = S.settings.lastRoom; }
+    showScreen('setup');
+    if (S.settings.hostMode === 'online') openRoom(S.settings.room); // reopen so guests can reconnect after a reload
   }
 
   // Test hook: lets automated tests drive pairing without cameras.
-  window.__briscola = { net, S, ui, joinRoom, openRoom, hostPairQR, openJoin };
+  window.__briscola = { net, S, ui, joinRoom, openRoom, hostPairQR, openNearbyJoin };
 
   if (window.claude && window.claude.hot && window.claude.hot.snapshot) {
     try { window.claude.hot.snapshot(() => ({ settings: S.settings, session: isGuest() ? S.savedSession : S.session })); } catch (e) { /* ignore */ }

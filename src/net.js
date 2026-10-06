@@ -73,6 +73,15 @@
     }).join('\r\n');
   }
 
+  // Both link types ping every 4 s and give up after 15 s of silence.
+  function startKeepalive(link) {
+    link.lastSeen = Date.now();
+    link.pingTimer = setInterval(() => {
+      if (Date.now() - link.lastSeen > 15000) { link.close('timeout'); return; }
+      link.send({ t: 'ping' });
+    }, 4000);
+  }
+
   // ---------- one peer connection with a JSON data channel ----------
   class Link {
     constructor(opts) {
@@ -98,11 +107,7 @@
       dc.onopen = () => {
         if (this.open) return;
         this.open = true;
-        this.lastSeen = Date.now();
-        this.pingTimer = setInterval(() => {
-          if (Date.now() - this.lastSeen > 15000) { this.close('timeout'); return; }
-          this.send({ t: 'ping' });
-        }, 4000);
+        startKeepalive(this);
         this.emit('open');
       };
       dc.onmessage = (e) => {
@@ -171,6 +176,41 @@
       clearInterval(this.pingTimer);
       try { if (this.dc) this.dc.close(); } catch (e) { /* ignore */ }
       try { this.pc.close(); } catch (e) { /* ignore */ }
+      this.emit('close', reason);
+    }
+  }
+
+  // ---------- fallback: game messages relayed through the signalling server ----------
+  // Used when the phones cannot reach each other directly (common between two phones on mobile data).
+  // Same interface as Link. Messages ride inside CANDIDATE envelopes, which the server forwards unchanged.
+  class RelayLink {
+    constructor(broker, peer) {
+      this.broker = broker;
+      this.peer = peer;
+      this.handlers = {};
+      this.relay = true;
+      this.open = true;
+      this.closed = false;
+      startKeepalive(this);
+    }
+    on(ev, fn) { this.handlers[ev] = fn; return this; }
+    emit(ev, a, b) { const f = this.handlers[ev]; if (f) { try { f(a, b); } catch (e) { console.error(e); } } }
+    send(m) {
+      if (this.closed || !this.broker.ws || this.broker.ws.readyState !== 1) return false;
+      this.broker.send('CANDIDATE', this.peer, { r: m });
+      return true;
+    }
+    receive(m) {
+      this.lastSeen = Date.now();
+      if (m && m.t !== 'ping') this.emit('message', m);
+    }
+    whenOpen() { return Promise.resolve(); }
+    close(reason) {
+      if (this.closed) return;
+      if (reason !== 'peer-closed') this.send({ t: 'relay-close' });
+      this.closed = true;
+      this.open = false;
+      clearInterval(this.pingTimer);
       this.emit('close', reason);
     }
   }
@@ -301,6 +341,11 @@
   const normaliseRoom = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
   const roomPeerId = (code) => `briscola-${code}`;
 
+  /** Test switch: ?p2p=0 skips the direct connection and goes straight to the relay. */
+  function directAllowed() {
+    try { return new URLSearchParams(location.search).get('p2p') !== '0'; } catch (e) { return true; }
+  }
+
   function brokerUrl() {
     try {
       const q = new URLSearchParams(location.search).get('broker');
@@ -310,7 +355,7 @@
   }
 
   root.BriscolaNet = {
-    PROTOCOL, STUN, Link, Broker, pack, unpack, qrSvg, startScanner, deviceId, roomCode, normaliseRoom, roomPeerId, brokerUrl,
+    PROTOCOL, STUN, Link, RelayLink, Broker, directAllowed, pack, unpack, qrSvg, startScanner, deviceId, roomCode, normaliseRoom, roomPeerId, brokerUrl,
     supported: () => typeof RTCPeerConnection !== 'undefined',
   };
 })(typeof self !== 'undefined' ? self : this);

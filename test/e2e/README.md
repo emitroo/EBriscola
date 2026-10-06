@@ -1,21 +1,26 @@
 # Browser tests
 
 These drive the real app in headless Chromium with simulated phones (Pixel 7 and iPhone 13 profiles).
-They are not part of `npm test` because they need Playwright, a local web server and, for room codes,
-a local PeerJS server.
+They run in GitHub Actions on every push that touches the app (`.github/workflows/e2e.yml`), where the
+online tests use the real public PeerJS server. They are not part of `npm test` because they need Playwright.
+
+Locally:
 
 ```
 npm run build
-python3 -m http.server 8765            # in one terminal, from the repo root
-node test/e2e/peer-server.js           # in another (npm i peer express), for room-code tests
+python3 -m http.server 8765                 # from the repo root
+node test/e2e/peer-server.js                # optional local signalling server (npm i peer express)
+export BROKER="ws://localhost:9000/peerjs?key=peerjs"   # omit to use 0.peerjs.com
 
-node test/e2e/one-phone.js  <outdir> 4 1 g4        # 1 human + 3 CPU on one phone, full hand
-node test/e2e/two-phones.js <outdir> qr            # two phones paired by QR text codes, full hand
-node test/e2e/two-phones.js <outdir> room ws://localhost:9000/peerjs?key=peerjs
-node test/e2e/reconnect.js  <outdir> qr            # drop the link mid-hand, re-pair, finish
-node test/e2e/reconnect.js  <outdir> room          # drop, automatic rejoin, page reload + rejoin, finish
-node test/e2e/camera-scan.js <outdir>              # guest scans a real host QR through a fake camera feed
-node test/e2e/pair-loop.js 9                       # repeated pairing, to catch intermittent failures
+node test/e2e/one-phone.js 4 1              # 1 human + 3 CPU on one phone
+node test/e2e/two-phones.js online          # host + guest join by code, direct connection
+node test/e2e/two-phones.js online relay    # same, forced through the relay (as on mobile data)
+node test/e2e/lobby-online.js [relay]       # host + 3 guests join by code, 4-phone hand
+node test/e2e/reconnect.js online           # drop, automatic rejoin, page reload + rejoin
+node test/e2e/two-phones.js nearby          # nearby QR pairing (text codes), full hand
+node test/e2e/reconnect.js nearby           # drop and re-pair with QR
+node test/e2e/camera-scan.js                # guest scans a real host QR through a fake camera
+node test/e2e/pair-loop.js 9                # repeated pairing, to catch intermittent failures
 ```
 
-`<outdir>` receives screenshots. Each script prints what it checked and any page errors.
+Screenshots go to `$OUT` (default: the system temp directory).
