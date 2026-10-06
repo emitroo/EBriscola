@@ -273,7 +273,7 @@
     relay_bad: 'Nel testo non c’è un indirizzo TURN con nome utente e credenziale.',
   });
 
-  Object.assign(en, { unlock_t: 'Have a deck code?', unlock: 'Unlock', unlock_ok: 'Unlocked: {name}', unlock_bad: 'That code doesn’t unlock anything.' });
-  Object.assign(it, { unlock_t: 'Hai un codice mazzo?', unlock: 'Sblocca', unlock_ok: 'Sbloccato: {name}', unlock_bad: 'Questo codice non sblocca niente.' });
+  Object.assign(en, { unlock_t: 'Have a deck code?', unlock: 'Unlock', unlock_ok: 'Unlocked: {name}', unlock_bad: 'That code doesn’t unlock anything.', deck_shared: 'Shared: everyone in this game sees it' });
+  Object.assign(it, { unlock_t: 'Hai un codice mazzo?', unlock: 'Sblocca', unlock_ok: 'Sbloccato: {name}', unlock_bad: 'Questo codice non sblocca niente.', deck_shared: 'Condiviso: lo vedono tutti i giocatori' });
   root.BriscolaI18n = { en, it };
 })(typeof self !== 'undefined' ? self : this);

@@ -16,6 +16,7 @@ node test/e2e/one-phone.js 4 1              # 1 human + 3 CPU on one phone
 node test/e2e/two-phones.js online          # host + guest join by code
 node test/e2e/two-phones.js online relay    # same, forced through the built-in TURN relay
 node test/e2e/lobby-online.js               # host + 3 guests join by code, 4-phone hand
+node test/e2e/shared-deck.js                # Settlers picked by one guest shows on every phone
 node test/e2e/reconnect.js online           # drop, automatic rejoin, page reload + rejoin
 node test/e2e/two-phones.js nearby          # nearby QR pairing (text codes), full hand
 node test/e2e/reconnect.js nearby           # drop and re-pair with QR

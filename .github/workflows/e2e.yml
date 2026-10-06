@@ -43,6 +43,9 @@ jobs:
       - name: Online lobby, host + 3 guests join by code
         if: always()
         run: node test/e2e/lobby-online.js
+      - name: Private deck picked by one guest is shared with the whole lobby
+        if: always()
+        run: node test/e2e/shared-deck.js
       - name: Online reconnect (drop, auto-rejoin, reload + rejoin)
         if: always()
         run: node test/e2e/reconnect.js online

@@ -70,8 +70,14 @@
   const SPEED = { slow: 1.5, normal: 1, fast: 0.55 };
   const spd = () => SPEED[S.settings.speed] || 1;
   /** Decks shown in the picker: hidden ones only once unlocked (and never in builds without the photo files). */
-  const deckAvailable = (d) => !d.hidden || (!window.BRISCOLA_NO_NET && (S.settings.unlocked || []).includes(d.id));
-  const deckId = () => (deckAvailable(D.get(S.settings.deck)) ? S.settings.deck : 'triestine');
+  const deckAvailable = (d) => !d.hidden || (!window.BRISCOLA_NO_NET && ((S.settings.unlocked || []).includes(d.id) || d.id === sharedDeck()));
+  /** Lobby-wide deck: a private deck picked by anyone in a multiplayer game shows on every phone in it. */
+  const sharedDeck = () => {
+    if (window.BRISCOLA_NO_NET) return null;
+    const id = isGuest() ? net.guest && net.guest.deck : hosting() ? S.settings.lobby.deck : null;
+    return id && D.list.some((d) => d.id === id) ? id : null;
+  };
+  const deckId = () => sharedDeck() || (deckAvailable(D.get(S.settings.deck)) ? S.settings.deck : 'triestine');
   const deck = () => D.get(deckId());
 
   const isGuest = () => net.role === 'guest';
@@ -301,7 +307,7 @@
   function deckPanel(withMeta) {
     const d = deck();
     return `<div class="panel"><div class="panel-head"><h2>${t('deck')}</h2></div>
-      <button class="deck-choice" data-act="decks">${fanHTML(d)}<span class="deck-meta"><strong>${d.name}</strong><span>${d.region} · ${d.area}</span>${withMeta ? `<span>${t('sys_' + d.system)}, ${t(d.figures)}</span>` : ''}<em>${t('change')}</em></span></button>
+      <button class="deck-choice" data-act="decks">${fanHTML(d)}<span class="deck-meta"><strong>${d.name}</strong><span>${d.region} · ${d.area}</span>${withMeta ? `<span>${t('sys_' + d.system)}, ${t(d.figures)}</span>` : ''}${sharedDeck() ? `<span class="deck-shared">${t('deck_shared')}</span>` : ''}<em>${t('change')}</em></span></button>
     </div>`;
   }
 
@@ -863,7 +869,7 @@
   function lobbyFor(dev) {
     const L = S.settings.lobby;
     return {
-      t: 'lobby', host: hostName(), started: !!(S.session && S.session.G), n: L.n, mode: S.settings.hostMode, code: net.room && net.room.code,
+      t: 'lobby', host: hostName(), started: !!(S.session && S.session.G), n: L.n, mode: S.settings.hostMode, code: net.room && net.room.code, deck: sharedDeck(),
       seats: L.seats.slice(0, L.n).map((s, p) => ({
         name: setupName(L, p), cpu: !!s.cpu && !s.remote, mine: s.remote === dev, open: !!s.open && !s.remote && !s.cpu,
         host: !s.cpu && !s.remote && !s.open,
@@ -895,7 +901,7 @@
       off: s.remote && s.remote !== dev ? !devOnline(s.remote) : false,
     }));
     return {
-      t: 'view', host: hostName(), G: v, cfg: { n: c.n, seats, swap: c.swap, target: c.target }, M: m,
+      t: 'view', host: hostName(), G: v, cfg: { n: c.n, seats, swap: c.swap, target: c.target }, M: m, deck: sharedDeck(),
       opts: { hideHands: S.settings.hideHands, showScore: S.settings.showScore, partnerView: S.settings.partnerView },
       fx: { played: ui.justPlayed, collecting: ui.collecting, toast: ui.toast, drawn: ui.drawnAll },
     };
@@ -911,6 +917,33 @@
       net.lastSent[d.dev] = key;
       d.link.send(msg);
     }
+  }
+
+  /** Pick a deck on this phone. In a multiplayer game a private deck becomes the lobby deck for everyone; picking a
+   *  regular deck turns that off again, and each phone goes back to its own choice. The host decides. */
+  function chooseDeck(id) {
+    S.settings.deck = id;
+    persist();
+    if (isGuest()) guestSend({ t: 'deck', id });
+    else if (hosting()) setLobbyDeck(id);
+  }
+
+  function setLobbyDeck(id) {
+    const L = S.settings.lobby, d = D.list.find((x) => x.id === id);
+    if (!d) return false;
+    const next = d.hidden ? id : null;
+    if ((L.deck || null) === next) return false;
+    L.deck = next;
+    if (next) unlockLocal(next);
+    persist();
+    broadcastLobby();
+    broadcastView();
+    return true;
+  }
+
+  /** Remember a private deck on this phone once it has been shared with it, so it stays in the picker. */
+  function unlockLocal(id) {
+    if (!S.settings.unlocked.includes(id)) { S.settings.unlocked.push(id); persist(); }
   }
 
   function sendState(d) {
@@ -1002,6 +1035,9 @@
         break;
       case 'leave':
         d.link.close('left');
+        break;
+      case 'deck':
+        if (typeof m.id === 'string' && setLobbyDeck(m.id)) onDevicesChanged();
         break;
       default:
     }
@@ -1312,7 +1348,7 @@
     }
     net.role = 'guest';
     const prevLobby = net.guest && net.guest.lobby;
-    net.guest = { link, mode, code, hostName: hostNm || (net.guest && net.guest.hostName) || '', status: 'online', lobby: prevLobby || null };
+    net.guest = { link, mode, code, hostName: hostNm || (net.guest && net.guest.hostName) || '', status: 'online', lobby: prevLobby || null, deck: (net.guest && net.guest.deck) || null };
     const gst = net.guest;
     link.on('message', onGuestMessage);
     link.on('close', () => { if (net.guest === gst && gst.link === link) onGuestLost(); });
@@ -1367,6 +1403,7 @@
     switch (m.t) {
       case 'welcome': gst.hostName = m.host; gst.status = 'online'; gst.welcomed = true; if (!$('#setup').hidden) renderSetup(); break;
       case 'lobby':
+        guestDeck(m.deck);
         gst.lobby = m;
         gst.hostName = m.host;
         if (!m.started) {
@@ -1377,11 +1414,20 @@
           render();
         }
         break;
-      case 'view': applyView(m); break;
+      case 'view': guestDeck(m.deck); applyView(m); break;
       case 'bye': leaveGuest(); break;
       case 'error': if (m.code === 'ver') leaveGuest(t('ver_mismatch')); break;
       default:
     }
+  }
+
+  /** Lobby deck from the host: takes over this phone's deck until someone picks a regular deck again. */
+  function guestDeck(id) {
+    const gst = net.guest, next = (typeof id === 'string' && D.list.some((d) => d.id === id)) ? id : null;
+    if (gst.deck === next) return;
+    gst.deck = next;
+    if (next) unlockLocal(next);
+    if (!$('#setup').hidden) renderSetup(); else render();
   }
 
   function applyView(m) {
@@ -1501,15 +1547,15 @@
         const inp = $('#unlock-code');
         const id = inp && D.unlockDeck(inp.value);
         if (!id) { pairSet('unlock-status', esc(t('unlock_bad'))); return; }
-        if (!S.settings.unlocked.includes(id)) S.settings.unlocked.push(id);
-        st.deck = id; persist();
+        unlockLocal(id);
+        chooseDeck(id);
         if (!$('#setup').hidden) renderSetup();
         render();
         pairSet('unlock-status', esc(t('unlock_ok', { name: D.get(id).name })));
         return;
       }
       case 'pick-deck':
-        st.deck = v; persist();
+        chooseDeck(v);
         ui.sheet = null;
         if (!$('#setup').hidden) renderSetup();
         render(); return;
