@@ -6,6 +6,6 @@
   "scripts": {
     "build": "node build.mjs",
     "test": "node --test test/*.test.js",
-    "site": "node build.mjs && rm -rf _site && mkdir _site && cp -r index.html sw.js manifest.webmanifest icon.svg icon-*.png assets _site/"
+    "site": "node build.mjs && rm -rf _site && mkdir _site && cp index.html sw.js manifest.webmanifest icon.svg icon-*.png _site/"
   }
 }

@@ -58,12 +58,13 @@
       pal: { red: '#c62828', blue: '#1f3c73', gold: '#e2b23c', green: '#33693f' },
       back: { kind: 'checks', c1: '#263238', c2: '#b0bec5' } },
   ];
-  // Settlers: a private Trieste-style deck, hidden until unlocked with a code. Friends' photos go on the
-  // aces and court cards, loaded from assets/settlers/cNN.jpg (NN = card id). A card whose photo file is
-  // missing shows the normal Trieste design, so the deck is always playable.
+  // Settlers: a private Trieste-style deck, hidden until a photo pack for it is opened (with its code, which is not
+  // stored anywhere in the app) or another phone in the same game shares it. Friends' photos are not part of the
+  // app: they come from an encrypted photo pack on each phone (see photos.js) and are set with setPhotos().
+  // A card without a photo shows the normal Trieste design, so the deck is always playable.
   DECKS.push({
     id: 'settlers', name: 'Settlers', region: 'Trieste', area: 'Edizione privata', system: 'it', figures: 'double', label: true,
-    hidden: true, photoDir: 'assets/settlers/', photos: [0, 7, 8, 9, 10, 17, 18, 19, 20, 27, 28, 29, 30, 37, 38, 39],
+    hidden: true, photoDeck: true,
     pal: { blue: '#1d4c98', red: '#c4212b', gold: '#e8b51b', green: '#2c7a3a', baton: '#c4212b', blade: '#5f8fc4' },
     back: { kind: 'tartan', c1: '#7a1f2b', c2: '#e8b51b' },
   });
@@ -152,7 +153,7 @@
       host.innerHTML = '<defs></defs>';
       document.body.prepend(host);
     }
-    host.querySelector('defs').insertAdjacentHTML('beforeend', symbolDefs(d) + backPattern(d) + (d.photos ? photoClips(d) : ''));
+    host.querySelector('defs').insertAdjacentHTML('beforeend', symbolDefs(d) + backPattern(d) + (d.photoDeck ? photoClips(d) : ''));
     loaded.add(d.id);
   }
 
@@ -381,7 +382,13 @@
 
   // ---------- photo cards (Settlers) ----------
   const SUIT_IT = ['DENARI', 'COPPE', 'SPADE', 'BASTONI'];
-  const photoSrc = (d, card) => `${d.photoDir}c${String(card).padStart(2, '0')}.jpg`;
+  const PHOTOS = {}; // deck id -> { card: image URL }, held in memory only
+  const photoSrc = (d, card) => PHOTOS[d.id][card];
+  /** Set (or clear, with null) the photos shown on a deck's cards. */
+  function setPhotos(deckId, map) {
+    PHOTOS[deckId] = map || {};
+    for (const k of [...faceCache.keys()]) if (k.startsWith(deckId + ':')) faceCache.delete(k);
+  }
 
   // Photo clip shapes live once in the shared sprite: a card drawn twice (or once inside a hidden sheet)
   // would otherwise carry duplicate ids, and browsers drop clips defined inside display:none subtrees.
@@ -444,7 +451,7 @@
     else if (d.system === 'it' && s === 3) body = italianBatons(d, r);
     else if (d.system === 'es' && s >= 2) body = crossedPips(d, key, r);
     else body = gridPips(d, key, r);
-    if (d.photos && d.photos.includes(card)) body = r < 8 ? photoAce(d, card, s, body) : photoCourt(d, card, s, r, body);
+    if (PHOTOS[d.id] && PHOTOS[d.id][card]) body = r < 8 ? photoAce(d, card, s, body) : photoCourt(d, card, s, r, body);
 
     const col = indexColor(d, s), lab = indexLabel(d, r);
     const idx = `<text x="19" y="37" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="${lab.length > 1 ? 24 : 30}" fill="${col}">${lab}</text>` + (holdLong(d, s) ? use(d, key, 14, 44, 10, 34) : useC(d, key, 19, 54, 18));
@@ -476,15 +483,6 @@
     return `<svg class="${cls || 'sicon'}" viewBox="${vb}" aria-hidden="true">${use(d, key, long ? -14 : -50, -50, long ? 28 : 100, 100)}</svg>`;
   }
 
-  // Cosmetic lock for hidden decks: a code only reveals the deck in the picker. It is not security;
-  // everything ships with the page.
-  function codeHash(str) {
-    let h = 0x811c9dc5;
-    for (const ch of String(str).trim().toLowerCase()) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
-    return h.toString(16);
-  }
-  const UNLOCK = { [codeHash('REDACTED')]: 'settlers' };
-  const unlockDeck = (code) => UNLOCK[codeHash(code)] || null;
 
-  root.BriscolaDecks = { list: DECKS, get, face, back, suitIcon, indexLabel, ensure, unlockDeck };
+  root.BriscolaDecks = { list: DECKS, get, face, back, suitIcon, indexLabel, ensure, setPhotos };
 })(typeof self !== 'undefined' ? self : this);

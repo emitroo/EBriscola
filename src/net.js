@@ -155,6 +155,11 @@
       }
       return false;
     }
+    /** Resolves once the send buffer is below max bytes, so large transfers don't starve game messages. */
+    async drain(max = 262144) {
+      while (this.dc && this.dc.readyState === 'open' && this.dc.bufferedAmount > max) await new Promise((r) => setTimeout(r, 40));
+      return !!(this.dc && this.dc.readyState === 'open');
+    }
     gathered(ms) {
       if (this.pc.iceGatheringState === 'complete') return Promise.resolve();
       return new Promise((res) => {

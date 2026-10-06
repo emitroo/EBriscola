@@ -373,3 +373,5 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .unlock-box summary { cursor: pointer; font-size: 14px; color: var(--ink-soft); font-weight: 600; }
 .unlock-box > * + * { margin-top: 8px; }
 .unlock-box input { width: 100%; min-width: 0; border: 1.5px solid var(--paper-2); background: #fffdf7; border-radius: 9px; padding: 9px 10px; font: inherit; color: var(--ink); min-height: 44px; }
+.unlock-box .btn-small { min-height: 36px; padding: 6px 12px; font-size: 13px; align-self: flex-start; }
+.unlock-box .pack-field input { padding: 7px 8px; font-size: 13px; }

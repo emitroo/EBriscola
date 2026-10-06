@@ -9,7 +9,7 @@
  */
 (function () {
   'use strict';
-  const E = window.BriscolaEngine, AI = window.BriscolaAI, D = window.BriscolaDecks, I18N = window.BriscolaI18n;
+  const E = window.BriscolaEngine, AI = window.BriscolaAI, D = window.BriscolaDecks, I18N = window.BriscolaI18n, PH = window.BriscolaPhotos;
   // BRISCOLA_NO_NET is set by builds that run where peer-to-peer connections are blocked (the claude.ai Artifact).
   const N = window.BriscolaNet && window.BriscolaNet.supported() && !window.BRISCOLA_NO_NET ? window.BriscolaNet : null;
   const STORE = 'briscola.v1';
@@ -304,6 +304,20 @@
     </div>`;
   }
 
+  /** Deck code entry, optional photo pack, and what this phone holds for each unlocked private deck. */
+  function unlockBox() {
+    const mine = D.list.filter((d) => d.photoDeck && deckAvailable(d));
+    const held = mine.map((d) => {
+      const n = photoCount(d.id);
+      return `<p class="hint"><strong>${d.name}:</strong> ${esc(n ? t('photos_have', { n }) : t('photos_none'))}</p>`
+        + (n ? `<button class="btn btn-ghost btn-small" data-act="photos-clear" data-v="${d.id}">${t('photos_clear')}</button>` : '');
+    }).join('');
+    return `<details class="unlock-box"${mine.length ? ' open' : ''}><summary>${t('unlock_t')}</summary>
+      <label class="field pack-field"><span>${t('pack_label')}</span><input type="file" id="unlock-pack" accept=".ebdeck,application/octet-stream"></label>
+      <div class="room-join"><input id="unlock-code" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="${t('pack_code')}" aria-label="${t('pack_code')}"><button class="btn btn-primary" data-act="unlock">${t('unlock')}</button></div>
+      <p class="pair-status" id="unlock-status" role="status"></p>${held}</details>`;
+  }
+
   function deckPanel(withMeta) {
     const d = deck();
     return `<div class="panel"><div class="panel-head"><h2>${t('deck')}</h2></div>
@@ -581,9 +595,7 @@
     if (sh.type === 'rules') body = head(t('rules')) + t('rules_html');
     else if (sh.type === 'decks') {
       body = head(t('choose_deck')) + `<div class="deck-grid">${D.list.filter(deckAvailable).map((d) => `<button class="deck-tile" data-act="pick-deck" data-v="${d.id}" aria-pressed="${d.id === deckId()}">${fanHTML(d)}<strong>${d.name}</strong><span>${d.region} · ${d.area}</span><span class="sys">${t('sys_' + d.system)}</span></button>`).join('')}</div>`
-        + (window.BRISCOLA_NO_NET ? '' : `<details class="unlock-box"><summary>${t('unlock_t')}</summary>
-          <div class="room-join"><input id="unlock-code" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="${t('unlock_t')}"><button class="btn btn-primary" data-act="unlock">${t('unlock')}</button></div>
-          <p class="pair-status" id="unlock-status" role="status"></p></details>`);
+        + (window.BRISCOLA_NO_NET ? '' : unlockBox());
     } else if (sh.type === 'menu') {
       const hostItems = isGuest()
         ? `<button class="btn btn-ghost" data-act="ask-leave">${t('leave')}</button>`
@@ -869,7 +881,7 @@
   function lobbyFor(dev) {
     const L = S.settings.lobby;
     return {
-      t: 'lobby', host: hostName(), started: !!(S.session && S.session.G), n: L.n, mode: S.settings.hostMode, code: net.room && net.room.code, deck: sharedDeck(),
+      t: 'lobby', host: hostName(), started: !!(S.session && S.session.G), n: L.n, mode: S.settings.hostMode, code: net.room && net.room.code, deck: sharedDeck(), photos: photoCount(sharedDeck()),
       seats: L.seats.slice(0, L.n).map((s, p) => ({
         name: setupName(L, p), cpu: !!s.cpu && !s.remote, mine: s.remote === dev, open: !!s.open && !s.remote && !s.cpu,
         host: !s.cpu && !s.remote && !s.open,
@@ -901,7 +913,7 @@
       off: s.remote && s.remote !== dev ? !devOnline(s.remote) : false,
     }));
     return {
-      t: 'view', host: hostName(), G: v, cfg: { n: c.n, seats, swap: c.swap, target: c.target }, M: m, deck: sharedDeck(),
+      t: 'view', host: hostName(), G: v, cfg: { n: c.n, seats, swap: c.swap, target: c.target }, M: m, deck: sharedDeck(), photos: photoCount(sharedDeck()),
       opts: { hideHands: S.settings.hideHands, showScore: S.settings.showScore, partnerView: S.settings.partnerView },
       fx: { played: ui.justPlayed, collecting: ui.collecting, toast: ui.toast, drawn: ui.drawnAll },
     };
@@ -938,6 +950,63 @@
     persist();
     broadcastLobby();
     broadcastView();
+    return true;
+  }
+
+  // ----- private photos: held on this phone only, passed between phones in the same game -----
+  const photos = {}, photoUrls = {}, incoming = {};
+  const photoCount = (deck) => (deck && photos[deck] ? Object.keys(photos[deck]).length : 0);
+  const isPhotoDeck = (id) => D.list.some((d) => d.id === id && d.photoDeck);
+
+  function applyPhotos(deck, map, keep) {
+    for (const u of Object.values(photoUrls[deck] || {})) URL.revokeObjectURL(u);
+    photos[deck] = map;
+    photoUrls[deck] = PH.urls(map);
+    D.setPhotos(deck, photoUrls[deck]);
+    if (keep) PH.save(deck, map);
+    if (!$('#setup').hidden) renderSetup();
+    render();
+  }
+
+  /** Send this phone's photos for a deck in small paced pieces (data channels drop very large messages). */
+  async function sendPhotos(link, deck) {
+    const map = photos[deck], CH = 48000;
+    if (!link || !map || link.sendingPhotos) return;
+    link.sendingPhotos = true;
+    try {
+      for (const [c, p] of Object.entries(map)) {
+        const n = Math.ceil(p.data.length / CH);
+        for (let i = 0; i < n; i++) {
+          if (!(await link.drain())) return;
+          link.send({ t: 'photo', deck, card: +c, type: p.type, i, n, data: p.data.slice(i * CH, (i + 1) * CH) });
+        }
+      }
+      if (await link.drain()) link.send({ t: 'photos-end', deck });
+    } finally { link.sendingPhotos = false; }
+  }
+
+  /** Collect photo pieces; on 'photos-end' keep the complete ones. Returns true when new photos were added. */
+  function onPhotoMsg(m) {
+    if (!isPhotoDeck(m.deck)) return false;
+    if (m.t === 'photo') {
+      if (!Number.isInteger(m.card) || m.card < 0 || m.card > 39 || !Number.isInteger(m.n) || m.n < 1 || m.n > 64) return false;
+      if (!Number.isInteger(m.i) || m.i < 0 || m.i >= m.n || typeof m.data !== 'string') return false;
+      const k = m.deck + ':' + m.card;
+      if (!incoming[k] || incoming[k].n !== m.n) incoming[k] = { type: m.type, n: m.n, parts: [] };
+      incoming[k].parts[m.i] = m.data;
+      return false;
+    }
+    const got = {};
+    for (const [k, e] of Object.entries(incoming)) {
+      const [deck, c] = k.split(':');
+      if (deck !== m.deck) continue;
+      delete incoming[k];
+      if (e.parts.filter((x) => typeof x === 'string').length === e.n) got[c] = { type: e.type, data: e.parts.join('') };
+    }
+    const fresh = PH.clean(got);
+    if (!Object.keys(fresh).some((c) => !(photos[m.deck] || {})[c])) return false;
+    unlockLocal(m.deck);
+    applyPhotos(m.deck, Object.assign({}, photos[m.deck], fresh), true);
     return true;
   }
 
@@ -1038,6 +1107,21 @@
         break;
       case 'deck':
         if (typeof m.id === 'string' && setLobbyDeck(m.id)) onDevicesChanged();
+        break;
+      // A guest has more photos for the lobby deck than this phone: fetch them (from one guest at a time).
+      case 'photos-offer':
+        if (m.deck === sharedDeck() && (m.n | 0) > photoCount(m.deck) && !deviceList().some((x) => x.photoReq)) {
+          d.photoReq = m.deck;
+          sendTo(d, { t: 'photos-req', deck: m.deck });
+        }
+        break;
+      case 'photos-req':
+        if (m.deck === sharedDeck() && photoCount(m.deck)) sendPhotos(d.link, m.deck);
+        break;
+      case 'photo': case 'photos-end':
+        if (d.photoReq !== m.deck) break;
+        if (m.t === 'photos-end') d.photoReq = null;
+        if (onPhotoMsg(m)) { broadcastLobby(); broadcastView(); }
         break;
       default:
     }
@@ -1403,7 +1487,7 @@
     switch (m.t) {
       case 'welcome': gst.hostName = m.host; gst.status = 'online'; gst.welcomed = true; if (!$('#setup').hidden) renderSetup(); break;
       case 'lobby':
-        guestDeck(m.deck);
+        guestDeck(m);
         gst.lobby = m;
         gst.hostName = m.host;
         if (!m.started) {
@@ -1414,7 +1498,13 @@
           render();
         }
         break;
-      case 'view': guestDeck(m.deck); applyView(m); break;
+      case 'view': guestDeck(m); applyView(m); break;
+      case 'photos-req': if (m.deck === gst.deck && photoCount(m.deck)) sendPhotos(gst.link, m.deck); break;
+      case 'photo': case 'photos-end':
+        if (gst.photoReq !== m.deck) break;
+        if (m.t === 'photos-end') gst.photoReq = null;
+        onPhotoMsg(m);
+        break;
       case 'bye': leaveGuest(); break;
       case 'error': if (m.code === 'ver') leaveGuest(t('ver_mismatch')); break;
       default:
@@ -1422,8 +1512,14 @@
   }
 
   /** Lobby deck from the host: takes over this phone's deck until someone picks a regular deck again. */
-  function guestDeck(id) {
-    const gst = net.guest, next = (typeof id === 'string' && D.list.some((d) => d.id === id)) ? id : null;
+  function guestDeck(m) {
+    const gst = net.guest, id = m.deck, next = (typeof id === 'string' && D.list.some((d) => d.id === id)) ? id : null;
+    // Photos follow the lobby deck: fetch the host's if it has more, offer ours if we have more.
+    if (next && isPhotoDeck(next)) {
+      const theirs = m.photos | 0, mine = photoCount(next);
+      if (theirs > mine && gst.photoReq !== next) { gst.photoReq = next; guestSend({ t: 'photos-req', deck: next }); }
+      else if (mine > theirs && gst.photoOffer !== next + mine) { gst.photoOffer = next + mine; guestSend({ t: 'photos-offer', deck: next, n: mine }); }
+    }
     if (gst.deck === next) return;
     gst.deck = next;
     if (next) unlockLocal(next);
@@ -1543,17 +1639,12 @@
       case 'deal': persist(); startMatch(); return;
       case 'resume': resume(); return;
       case 'decks': ui.sheet = { type: 'decks' }; render(); return;
-      case 'unlock': {
-        const inp = $('#unlock-code');
-        const id = inp && D.unlockDeck(inp.value);
-        if (!id) { pairSet('unlock-status', esc(t('unlock_bad'))); return; }
-        unlockLocal(id);
-        chooseDeck(id);
-        if (!$('#setup').hidden) renderSetup();
-        render();
-        pairSet('unlock-status', esc(t('unlock_ok', { name: D.get(id).name })));
+      case 'unlock': unlockWith($('#unlock-code'), $('#unlock-pack')); return;
+      case 'photos-clear':
+        if (!isPhotoDeck(v)) return;
+        PH.remove(v);
+        applyPhotos(v, {}, false);
         return;
-      }
       case 'pick-deck':
         chooseDeck(v);
         ui.sheet = null;
@@ -1652,6 +1743,29 @@
     if (ev.key === 'Enter' && ev.target.id === 'pj-room' && !net.joining) joinRoom(ev.target.value, false);
   });
 
+  /** Open an encrypted photo pack with its code: unlocks the pack's deck and keeps the photos on this phone. */
+  async function unlockWith(inp, fileInp) {
+    const code = inp ? inp.value : '';
+    const file = fileInp && fileInp.files && fileInp.files[0];
+    if (!file) { pairSet('unlock-status', esc(t('pack_need'))); return; }
+    if (!String(code).trim()) { pairSet('unlock-status', esc(t('pack_bad_code'))); return; }
+    pairSet('unlock-status', esc(t('pack_reading')));
+    let pack;
+    try { pack = await PH.open(new Uint8Array(await file.arrayBuffer()), code); } catch (e) {
+      pairSet('unlock-status', esc(t(e.message === 'code' ? 'pack_bad_code' : 'pack_bad_file')));
+      return;
+    }
+    const id = pack.deck;
+    if (!isPhotoDeck(id)) { pairSet('unlock-status', esc(t('pack_bad_file'))); return; }
+    unlockLocal(id);
+    applyPhotos(id, Object.assign({}, photos[id], pack.photos), true);
+    chooseDeck(id);
+    if (!$('#setup').hidden) renderSetup();
+    render();
+    const n = photoCount(id);
+    pairSet('unlock-status', esc(n ? t('pack_ok', { name: D.get(id).name, n }) : t('unlock_ok', { name: D.get(id).name })));
+  }
+
   // ================= BOOT =================
   function start(hotData) {
     const saved = (hotData && hotData.settings) ? hotData : store.load();
@@ -1670,6 +1784,10 @@
       if (saved.session && saved.session.G && saved.session.G.v === 1) S.session = saved.session;
     }
     if (!N) S.settings.hostMode = null;
+    // Private photos stored on this phone (never part of the app itself).
+    if (PH && !window.BRISCOLA_NO_NET && typeof indexedDB !== 'undefined') {
+      for (const d of D.list.filter((x) => x.photoDeck)) PH.load(d.id).then((m) => { if (Object.keys(m).length) applyPhotos(d.id, m, false); });
+    }
     ui.screen = S.settings.hostMode ? 'host' : 'home';
     let join = null;
     if (N) {
@@ -1686,7 +1804,7 @@
   }
 
   // Test hook: lets automated tests drive pairing without cameras.
-  window.__briscola = { net, S, ui, joinRoom, openRoom, hostPairQR, openNearbyJoin };
+  window.__briscola = { net, S, ui, joinRoom, openRoom, hostPairQR, openNearbyJoin, photoCount };
 
   if (window.claude && window.claude.hot && window.claude.hot.snapshot) {
     try { window.claude.hot.snapshot(() => ({ settings: S.settings, session: isGuest() ? S.savedSession : S.session })); } catch (e) { /* ignore */ }
