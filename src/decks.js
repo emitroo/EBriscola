@@ -58,6 +58,15 @@
       pal: { red: '#c62828', blue: '#1f3c73', gold: '#e2b23c', green: '#33693f' },
       back: { kind: 'checks', c1: '#263238', c2: '#b0bec5' } },
   ];
+  // Settlers: a private Trieste-style deck, hidden until unlocked with a code. Friends' photos go on the
+  // aces and court cards, loaded from assets/settlers/cNN.jpg (NN = card id). A card whose photo file is
+  // missing shows the normal Trieste design, so the deck is always playable.
+  DECKS.push({
+    id: 'settlers', name: 'Settlers', region: 'Trieste', area: 'Edizione privata', system: 'it', figures: 'double', label: true,
+    hidden: true, photoDir: 'assets/settlers/', photos: [0, 7, 8, 9, 10, 17, 18, 19, 20, 27, 28, 29, 30, 37, 38, 39],
+    pal: { blue: '#1d4c98', red: '#c4212b', gold: '#e8b51b', green: '#2c7a3a', baton: '#c4212b', blade: '#5f8fc4' },
+    back: { kind: 'tartan', c1: '#7a1f2b', c2: '#e8b51b' },
+  });
   DECKS.forEach((d) => { d.pal = Object.assign({}, BASE, d.pal); });
   const byId = Object.fromEntries(DECKS.map((d) => [d.id, d]));
   const get = (id) => byId[id] || byId.triestine;
@@ -143,7 +152,7 @@
       host.innerHTML = '<defs></defs>';
       document.body.prepend(host);
     }
-    host.querySelector('defs').insertAdjacentHTML('beforeend', symbolDefs(d) + backPattern(d));
+    host.querySelector('defs').insertAdjacentHTML('beforeend', symbolDefs(d) + backPattern(d) + (d.photos ? photoClips(d) : ''));
     loaded.add(d.id);
   }
 
@@ -370,6 +379,46 @@
     return o;
   }
 
+  // ---------- photo cards (Settlers) ----------
+  const SUIT_IT = ['DENARI', 'COPPE', 'SPADE', 'BASTONI'];
+  const photoSrc = (d, card) => `${d.photoDir}c${String(card).padStart(2, '0')}.jpg`;
+
+  // Photo clip shapes live once in the shared sprite: a card drawn twice (or once inside a hidden sheet)
+  // would otherwise carry duplicate ids, and browsers drop clips defined inside display:none subtrees.
+  const photoClips = (d) => `<clipPath id="ph-${d.id}-oval"><ellipse cx="100" cy="158" rx="64" ry="85"/></clipPath>`
+    + `<clipPath id="ph-${d.id}-rect"><rect x="9" y="9" width="182" height="322" rx="10"/></clipPath>`;
+
+  // Medallion layout: aces, and any number card given a photo later (the ribbon names the card).
+  function photoAce(d, card, s, base) {
+    const p = d.pal, k = p.ink, id = `ph-${d.id}-oval`;
+    let o = base;
+    o += `<ellipse cx="100" cy="158" rx="70" ry="91" fill="${p.paper}" stroke="${p.gold}" stroke-width="7"/>`;
+    o += `<image href="${photoSrc(d, card)}" x="36" y="73" width="128" height="170" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/>`;
+    o += `<ellipse cx="100" cy="158" rx="70" ry="91" fill="none" stroke="${k}" stroke-width="1.6"/>`;
+    o += `<ellipse cx="100" cy="158" rx="64" ry="85" fill="none" stroke="${k}" stroke-width="1.2"/>`;
+    // Suit emblems around the medallion keep the card recognisable at a glance.
+    for (const [x, y] of [[100, 62], [24, 158], [176, 158]]) o += `<circle cx="${x}" cy="${y}" r="15" fill="${p.paper}" stroke="${k}" stroke-width="1.2"/>` + useC(d, SUIT_KEYS[s], x, y, 22);
+    o += `<path d="M30,262 Q100,250 170,262 L164,286 Q100,274 36,286 Z" fill="${p.paper}" stroke="${k}" stroke-width="1.6"/>`;
+    o += `<text x="100" y="276" text-anchor="middle" font-family="Georgia,serif" font-size="12" letter-spacing="1.2" fill="${k}">${card % 10 ? (card % 10 + 1) : 'ASSO'} DI ${SUIT_IT[s]}</text>`;
+    return o;
+  }
+
+  function photoCourt(d, card, s, r, base) {
+    const p = d.pal, k = p.ink, id = `ph-${d.id}-rect`;
+    const role = ROLE_IT[r];
+    let o = base;
+    o += `<image href="${photoSrc(d, card)}" x="9" y="9" width="182" height="322" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/>`;
+    o += `<rect x="9" y="9" width="182" height="322" rx="10" fill="none" stroke="${p.gold}" stroke-width="5"/>`;
+    o += `<rect x="6.5" y="6.5" width="187" height="327" rx="12" fill="none" stroke="${k}" stroke-width="1.4"/>`;
+    // Paper badges behind the corner indices, and a name banner with the suit on both sides.
+    const badge = `<rect x="5" y="9" width="29" height="58" rx="6" fill="${p.paper}" fill-opacity="0.94" stroke="${k}" stroke-width="1"/>`;
+    o += badge + `<g transform="rotate(180 100 170)">${badge}</g>`;
+    o += `<rect x="44" y="300" width="112" height="24" rx="5" fill="${p.paper}" fill-opacity="0.95" stroke="${k}" stroke-width="1.2"/>`;
+    o += useC(d, SUIT_KEYS[s], 57, 312, 16) + useC(d, SUIT_KEYS[s], 143, 312, 16);
+    o += `<text x="100" y="316.5" text-anchor="middle" font-family="Georgia,serif" font-size="12" font-weight="700" letter-spacing="1.4" fill="${k}">${role}</text>`;
+    return o;
+  }
+
   // ---------- indices ----------
   function indexLabel(d, r) {
     if (d.system === 'fr') return { 1: 'A', 8: 'J', 9: 'Q', 10: 'K' }[r] || String(r);
@@ -395,6 +444,7 @@
     else if (d.system === 'it' && s === 3) body = italianBatons(d, r);
     else if (d.system === 'es' && s >= 2) body = crossedPips(d, key, r);
     else body = gridPips(d, key, r);
+    if (d.photos && d.photos.includes(card)) body = r < 8 ? photoAce(d, card, s, body) : photoCourt(d, card, s, r, body);
 
     const col = indexColor(d, s), lab = indexLabel(d, r);
     const idx = `<text x="19" y="37" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="${lab.length > 1 ? 24 : 30}" fill="${col}">${lab}</text>` + (holdLong(d, s) ? use(d, key, 14, 44, 10, 34) : useC(d, key, 19, 54, 18));
@@ -426,5 +476,15 @@
     return `<svg class="${cls || 'sicon'}" viewBox="${vb}" aria-hidden="true">${use(d, key, long ? -14 : -50, -50, long ? 28 : 100, 100)}</svg>`;
   }
 
-  root.BriscolaDecks = { list: DECKS, get, face, back, suitIcon, indexLabel, ensure };
+  // Cosmetic lock for hidden decks: a code only reveals the deck in the picker. It is not security;
+  // everything ships with the page.
+  function codeHash(str) {
+    let h = 0x811c9dc5;
+    for (const ch of String(str).trim().toLowerCase()) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
+    return h.toString(16);
+  }
+  const UNLOCK = { [codeHash('REDACTED')]: 'settlers' };
+  const unlockDeck = (code) => UNLOCK[codeHash(code)] || null;
+
+  root.BriscolaDecks = { list: DECKS, get, face, back, suitIcon, indexLabel, ensure, unlockDeck };
 })(typeof self !== 'undefined' ? self : this);

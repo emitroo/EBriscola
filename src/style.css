@@ -367,3 +367,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .relay-box textarea { width: 100%; min-width: 0; border: 1.5px solid var(--paper-2); background: #fffdf7; border-radius: 9px; padding: 9px 10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--ink); resize: vertical; }
 
 .pair-status .diag { display: block; font-size: 11px; font-weight: 400; color: var(--ink-soft); font-family: ui-monospace, Menlo, Consolas, monospace; }
+
+.unlock-box { border-top: 1px solid var(--paper-2); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.unlock-box summary { cursor: pointer; font-size: 14px; color: var(--ink-soft); font-weight: 600; }
+.unlock-box > * + * { margin-top: 8px; }
+.unlock-box input { width: 100%; min-width: 0; border: 1.5px solid var(--paper-2); background: #fffdf7; border-radius: 9px; padding: 9px 10px; font: inherit; color: var(--ink); min-height: 44px; }

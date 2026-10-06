@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#113524">
-<meta name="description" content="Briscola for 2 to 4 players on one phone or several, with regional Italian decks.">
+<meta name="description" content="EBriscola: Briscola for 2 to 4 players on one phone or several, with regional Italian decks.">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Briscola">
-<title>Briscola</title>
+<meta name="apple-mobile-web-app-title" content="EBriscola">
+<title>EBriscola</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -383,6 +383,11 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .relay-box textarea { width: 100%; min-width: 0; border: 1.5px solid var(--paper-2); background: #fffdf7; border-radius: 9px; padding: 9px 10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--ink); resize: vertical; }
 
 .pair-status .diag { display: block; font-size: 11px; font-weight: 400; color: var(--ink-soft); font-family: ui-monospace, Menlo, Consolas, monospace; }
+
+.unlock-box { border-top: 1px solid var(--paper-2); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.unlock-box summary { cursor: pointer; font-size: 14px; color: var(--ink-soft); font-weight: 600; }
+.unlock-box > * + * { margin-top: 8px; }
+.unlock-box input { width: 100%; min-width: 0; border: 1.5px solid var(--paper-2); background: #fffdf7; border-radius: 9px; padding: 9px 10px; font: inherit; color: var(--ink); min-height: 44px; }
 
 body { touch-action: manipulation; }
 </style>
@@ -832,6 +837,15 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       pal: { red: '#c62828', blue: '#1f3c73', gold: '#e2b23c', green: '#33693f' },
       back: { kind: 'checks', c1: '#263238', c2: '#b0bec5' } },
   ];
+  // Settlers: a private Trieste-style deck, hidden until unlocked with a code. Friends' photos go on the
+  // aces and court cards, loaded from assets/settlers/cNN.jpg (NN = card id). A card whose photo file is
+  // missing shows the normal Trieste design, so the deck is always playable.
+  DECKS.push({
+    id: 'settlers', name: 'Settlers', region: 'Trieste', area: 'Edizione privata', system: 'it', figures: 'double', label: true,
+    hidden: true, photoDir: 'assets/settlers/', photos: [0, 7, 8, 9, 10, 17, 18, 19, 20, 27, 28, 29, 30, 37, 38, 39],
+    pal: { blue: '#1d4c98', red: '#c4212b', gold: '#e8b51b', green: '#2c7a3a', baton: '#c4212b', blade: '#5f8fc4' },
+    back: { kind: 'tartan', c1: '#7a1f2b', c2: '#e8b51b' },
+  });
   DECKS.forEach((d) => { d.pal = Object.assign({}, BASE, d.pal); });
   const byId = Object.fromEntries(DECKS.map((d) => [d.id, d]));
   const get = (id) => byId[id] || byId.triestine;
@@ -917,7 +931,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       host.innerHTML = '<defs></defs>';
       document.body.prepend(host);
     }
-    host.querySelector('defs').insertAdjacentHTML('beforeend', symbolDefs(d) + backPattern(d));
+    host.querySelector('defs').insertAdjacentHTML('beforeend', symbolDefs(d) + backPattern(d) + (d.photos ? photoClips(d) : ''));
     loaded.add(d.id);
   }
 
@@ -1144,6 +1158,46 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     return o;
   }
 
+  // ---------- photo cards (Settlers) ----------
+  const SUIT_IT = ['DENARI', 'COPPE', 'SPADE', 'BASTONI'];
+  const photoSrc = (d, card) => `${d.photoDir}c${String(card).padStart(2, '0')}.jpg`;
+
+  // Photo clip shapes live once in the shared sprite: a card drawn twice (or once inside a hidden sheet)
+  // would otherwise carry duplicate ids, and browsers drop clips defined inside display:none subtrees.
+  const photoClips = (d) => `<clipPath id="ph-${d.id}-oval"><ellipse cx="100" cy="158" rx="64" ry="85"/></clipPath>`
+    + `<clipPath id="ph-${d.id}-rect"><rect x="9" y="9" width="182" height="322" rx="10"/></clipPath>`;
+
+  // Medallion layout: aces, and any number card given a photo later (the ribbon names the card).
+  function photoAce(d, card, s, base) {
+    const p = d.pal, k = p.ink, id = `ph-${d.id}-oval`;
+    let o = base;
+    o += `<ellipse cx="100" cy="158" rx="70" ry="91" fill="${p.paper}" stroke="${p.gold}" stroke-width="7"/>`;
+    o += `<image href="${photoSrc(d, card)}" x="36" y="73" width="128" height="170" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/>`;
+    o += `<ellipse cx="100" cy="158" rx="70" ry="91" fill="none" stroke="${k}" stroke-width="1.6"/>`;
+    o += `<ellipse cx="100" cy="158" rx="64" ry="85" fill="none" stroke="${k}" stroke-width="1.2"/>`;
+    // Suit emblems around the medallion keep the card recognisable at a glance.
+    for (const [x, y] of [[100, 62], [24, 158], [176, 158]]) o += `<circle cx="${x}" cy="${y}" r="15" fill="${p.paper}" stroke="${k}" stroke-width="1.2"/>` + useC(d, SUIT_KEYS[s], x, y, 22);
+    o += `<path d="M30,262 Q100,250 170,262 L164,286 Q100,274 36,286 Z" fill="${p.paper}" stroke="${k}" stroke-width="1.6"/>`;
+    o += `<text x="100" y="276" text-anchor="middle" font-family="Georgia,serif" font-size="12" letter-spacing="1.2" fill="${k}">${card % 10 ? (card % 10 + 1) : 'ASSO'} DI ${SUIT_IT[s]}</text>`;
+    return o;
+  }
+
+  function photoCourt(d, card, s, r, base) {
+    const p = d.pal, k = p.ink, id = `ph-${d.id}-rect`;
+    const role = ROLE_IT[r];
+    let o = base;
+    o += `<image href="${photoSrc(d, card)}" x="9" y="9" width="182" height="322" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/>`;
+    o += `<rect x="9" y="9" width="182" height="322" rx="10" fill="none" stroke="${p.gold}" stroke-width="5"/>`;
+    o += `<rect x="6.5" y="6.5" width="187" height="327" rx="12" fill="none" stroke="${k}" stroke-width="1.4"/>`;
+    // Paper badges behind the corner indices, and a name banner with the suit on both sides.
+    const badge = `<rect x="5" y="9" width="29" height="58" rx="6" fill="${p.paper}" fill-opacity="0.94" stroke="${k}" stroke-width="1"/>`;
+    o += badge + `<g transform="rotate(180 100 170)">${badge}</g>`;
+    o += `<rect x="44" y="300" width="112" height="24" rx="5" fill="${p.paper}" fill-opacity="0.95" stroke="${k}" stroke-width="1.2"/>`;
+    o += useC(d, SUIT_KEYS[s], 57, 312, 16) + useC(d, SUIT_KEYS[s], 143, 312, 16);
+    o += `<text x="100" y="316.5" text-anchor="middle" font-family="Georgia,serif" font-size="12" font-weight="700" letter-spacing="1.4" fill="${k}">${role}</text>`;
+    return o;
+  }
+
   // ---------- indices ----------
   function indexLabel(d, r) {
     if (d.system === 'fr') return { 1: 'A', 8: 'J', 9: 'Q', 10: 'K' }[r] || String(r);
@@ -1169,6 +1223,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     else if (d.system === 'it' && s === 3) body = italianBatons(d, r);
     else if (d.system === 'es' && s >= 2) body = crossedPips(d, key, r);
     else body = gridPips(d, key, r);
+    if (d.photos && d.photos.includes(card)) body = r < 8 ? photoAce(d, card, s, body) : photoCourt(d, card, s, r, body);
 
     const col = indexColor(d, s), lab = indexLabel(d, r);
     const idx = `<text x="19" y="37" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-weight="700" font-size="${lab.length > 1 ? 24 : 30}" fill="${col}">${lab}</text>` + (holdLong(d, s) ? use(d, key, 14, 44, 10, 34) : useC(d, key, 19, 54, 18));
@@ -1200,7 +1255,17 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     return `<svg class="${cls || 'sicon'}" viewBox="${vb}" aria-hidden="true">${use(d, key, long ? -14 : -50, -50, long ? 28 : 100, 100)}</svg>`;
   }
 
-  root.BriscolaDecks = { list: DECKS, get, face, back, suitIcon, indexLabel, ensure };
+  // Cosmetic lock for hidden decks: a code only reveals the deck in the picker. It is not security;
+  // everything ships with the page.
+  function codeHash(str) {
+    let h = 0x811c9dc5;
+    for (const ch of String(str).trim().toLowerCase()) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
+    return h.toString(16);
+  }
+  const UNLOCK = { [codeHash('REDACTED')]: 'settlers' };
+  const unlockDeck = (code) => UNLOCK[codeHash(code)] || null;
+
+  root.BriscolaDecks = { list: DECKS, get, face, back, suitIcon, indexLabel, ensure, unlockDeck };
 })(typeof self !== 'undefined' ? self : this);
 
 ;
@@ -1331,7 +1396,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     need_device: 'Pick a connected phone for every “Other phone” seat.',
     need_local: 'Keep at least one human seat on this phone.',
     pair_title: 'Add a phone',
-    pair_s1: 'On the other phone open Briscola, tap Join someone else’s game → Scan host code, and point it here.',
+    pair_s1: 'On the other phone open EBriscola, tap Join someone else’s game → Scan host code, and point it here.',
     pair_s2: 'Then scan the code that appears on their screen.',
     cam_start: 'Starting camera…', cam_on: 'Point the camera at their code.',
     cam_denied: 'Camera unavailable. Allow camera access in browser settings, or use the text codes below.',
@@ -1339,7 +1404,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     paste_reply: 'Paste their reply code', connect: 'Connect',
     connecting: 'Connecting…', pair_ok: '{name} connected',
     pair_fail: 'Could not connect. Put both phones on the same Wi-Fi or hotspot and try again.',
-    bad_code: 'That is not a Briscola pairing code.',
+    bad_code: 'That is not an EBriscola pairing code.',
     join_title: 'Join a game', your_name: 'Your name', scan_host: 'Scan host code',
     scan_host_d: 'offline, same Wi-Fi or hotspot', or_room: 'Or join with a room code (internet)', join: 'Join',
     join_s2: 'Now show this code to the host so they can scan it.',
@@ -1354,7 +1419,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     rejoin: 'Rejoin room {code}',
     dev_off: '{name} disconnected', phones_menu: 'Phones',
     wait_remote: 'Waiting for {name}…', wait_off: 'Waiting for {name} to reconnect',
-    ver_mismatch: 'The other phone has a different version of Briscola. Reload the page on both phones.',
+    ver_mismatch: 'The other phone has a different version of EBriscola. Reload the page on both phones.',
     host_tag: 'host', on: 'On',
     guest_next: 'Next hand',
     no_webrtc: 'This browser cannot connect phones. Use Chrome on Android or Safari on iPhone.',
@@ -1374,7 +1439,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     need_device: 'Scegli un telefono connesso per ogni posto “Altro telefono”.',
     need_local: 'Tieni almeno un posto umano su questo telefono.',
     pair_title: 'Aggiungi un telefono',
-    pair_s1: 'Sull’altro telefono apri Briscola, tocca Unisciti alla partita di un altro → Scansiona il codice, e inquadra qui.',
+    pair_s1: 'Sull’altro telefono apri EBriscola, tocca Unisciti alla partita di un altro → Scansiona il codice, e inquadra qui.',
     pair_s2: 'Poi scansiona il codice che appare sul suo schermo.',
     cam_start: 'Avvio fotocamera…', cam_on: 'Inquadra il suo codice.',
     cam_denied: 'Fotocamera non disponibile. Consenti l’accesso nelle impostazioni del browser, oppure usa i codici di testo qui sotto.',
@@ -1382,7 +1447,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     paste_reply: 'Incolla il codice di risposta', connect: 'Collega',
     connecting: 'Connessione…', pair_ok: '{name} connesso',
     pair_fail: 'Connessione non riuscita. Metti entrambi i telefoni sulla stessa Wi-Fi o hotspot e riprova.',
-    bad_code: 'Questo non è un codice di Briscola.',
+    bad_code: 'Questo non è un codice di EBriscola.',
     join_title: 'Unisciti a una partita', your_name: 'Il tuo nome', scan_host: 'Scansiona il codice',
     scan_host_d: 'offline, stessa Wi-Fi o hotspot', or_room: 'Oppure entra con un codice stanza (internet)', join: 'Entra',
     join_s2: 'Ora mostra questo codice a chi ospita, che lo deve scansionare.',
@@ -1397,7 +1462,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     rejoin: 'Rientra nella stanza {code}',
     dev_off: '{name} disconnesso', phones_menu: 'Telefoni',
     wait_remote: 'Si aspetta {name}…', wait_off: 'Si aspetta che {name} si riconnetta',
-    ver_mismatch: 'L’altro telefono ha una versione diversa di Briscola. Ricarica la pagina su entrambi.',
+    ver_mismatch: 'L’altro telefono ha una versione diversa di EBriscola. Ricarica la pagina su entrambi.',
     host_tag: 'ospita', on: 'Sì',
     guest_next: 'Prossima mano',
     no_webrtc: 'Questo browser non può collegare i telefoni. Usa Chrome su Android o Safari su iPhone.',
@@ -1416,7 +1481,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     invite_qr: 'Or they scan this QR with their phone camera.', share: 'Share invite link', link_copied: 'Invite link copied',
     add_t: 'Add players',
     near_s1: 'Everyone joins the same Wi-Fi, or your phone’s hotspot. Mobile data can stay off.',
-    near_s2: 'Each friend opens Briscola and taps Join under Nearby, no internet.',
+    near_s2: 'Each friend opens EBriscola and taps Join under Nearby, no internet.',
     near_s3: 'Tap Add a phone and swap QR codes, one friend at a time.',
     add_phone: 'Add a phone', phone: 'Phone', waiting_player: 'Waiting for a player…', open_seat: 'Open seat',
     open_seat_err: 'Player {n} is still an open seat. Wait for someone to join, or make it a CPU.',
@@ -1447,7 +1512,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     invite_qr: 'Oppure inquadrano questo QR con la fotocamera.', share: 'Condividi il link', link_copied: 'Link copiato',
     add_t: 'Aggiungi giocatori',
     near_s1: 'Tutti sulla stessa Wi-Fi, o sull’hotspot del tuo telefono. I dati mobili possono restare spenti.',
-    near_s2: 'Ogni amico apre Briscola e tocca Entra sotto Vicini, senza internet.',
+    near_s2: 'Ogni amico apre EBriscola e tocca Entra sotto Vicini, senza internet.',
     near_s3: 'Tocca Aggiungi un telefono e scambiatevi i codici QR, un amico alla volta.',
     add_phone: 'Aggiungi un telefono', phone: 'Telefono', waiting_player: 'In attesa di un giocatore…', open_seat: 'Posto libero',
     open_seat_err: 'Il giocatore {n} è ancora un posto libero. Aspetta che qualcuno entri, o mettilo alla CPU.',
@@ -1478,6 +1543,9 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     relay_save: 'Salva relay', relay_ok: 'Relay salvato ({n} indirizzi). Le nuove connessioni lo useranno.',
     relay_bad: 'Nel testo non c’è un indirizzo TURN con nome utente e credenziale.',
   });
+
+  Object.assign(en, { unlock_t: 'Have a deck code?', unlock: 'Unlock', unlock_ok: 'Unlocked: {name}', unlock_bad: 'That code doesn’t unlock anything.' });
+  Object.assign(it, { unlock_t: 'Hai un codice mazzo?', unlock: 'Sblocca', unlock_ok: 'Sbloccato: {name}', unlock_bad: 'Questo codice non sblocca niente.' });
   root.BriscolaI18n = { en, it };
 })(typeof self !== 'undefined' ? self : this);
 
@@ -1882,7 +1950,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     lobby: { n: 2, seats: [0, 1, 2, 3].map((p) => blankSeat({ open: p > 0 })) },
     hideHands: true, twoTap: true, swap: 0, partnerView: true, showScore: false,
     target: 1, speed: 'normal', sound: true,
-    myName: '', knownDevs: {}, hostMode: null, room: null, lastRoom: null, turn: '',
+    myName: '', knownDevs: {}, hostMode: null, room: null, lastRoom: null, turn: '', unlocked: [],
   };
 
   const S = { settings: JSON.parse(JSON.stringify(DEFAULTS)), session: null, savedSession: null };
@@ -1921,7 +1989,9 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   }
   const SPEED = { slow: 1.5, normal: 1, fast: 0.55 };
   const spd = () => SPEED[S.settings.speed] || 1;
-  const deckId = () => S.settings.deck;
+  /** Decks shown in the picker: hidden ones only once unlocked (and never in builds without the photo files). */
+  const deckAvailable = (d) => !d.hidden || (!window.BRISCOLA_NO_NET && (S.settings.unlocked || []).includes(d.id));
+  const deckId = () => (deckAvailable(D.get(S.settings.deck)) ? S.settings.deck : 'triestine');
   const deck = () => D.get(deckId());
 
   const isGuest = () => net.role === 'guest';
@@ -2066,7 +2136,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   // ================= SETUP SCREENS =================
   const seg = (act, opts, cur) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" data-act="${act}" data-v="${v}" aria-pressed="${String(cur) === String(v)}">${esc(l)}</button>`).join('')}</div>`;
   const sw = (id, key) => `<span class="switch"><input type="checkbox" id="${id}" data-set="${key}" ${S.settings[key] ? 'checked' : ''}><span></span></span>`;
-  const brand = (sub) => `<header class="brand"><div><h1 class="wordmark">Briscola</h1><p class="wordmark-sub">${sub}</p></div><div class="brand-suits">${[0, 1, 2, 3].map((s) => D.suitIcon(s, deckId())).join('')}</div></header>`;
+  const brand = (sub) => `<header class="brand"><div><h1 class="wordmark">EBriscola</h1><p class="wordmark-sub">${sub}</p></div><div class="brand-suits">${[0, 1, 2, 3].map((s) => D.suitIcon(s, deckId())).join('')}</div></header>`;
   const backBar = (act, label) => `<button class="back-link" data-act="${act}">${ICON.left}<span>${label}</span></button>`;
 
   function renderSetup() {
@@ -2424,7 +2494,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     let body = '';
     if (sh.type === 'rules') body = head(t('rules')) + t('rules_html');
     else if (sh.type === 'decks') {
-      body = head(t('choose_deck')) + `<div class="deck-grid">${D.list.map((d) => `<button class="deck-tile" data-act="pick-deck" data-v="${d.id}" aria-pressed="${d.id === deckId()}">${fanHTML(d)}<strong>${d.name}</strong><span>${d.region} · ${d.area}</span><span class="sys">${t('sys_' + d.system)}</span></button>`).join('')}</div>`;
+      body = head(t('choose_deck')) + `<div class="deck-grid">${D.list.filter(deckAvailable).map((d) => `<button class="deck-tile" data-act="pick-deck" data-v="${d.id}" aria-pressed="${d.id === deckId()}">${fanHTML(d)}<strong>${d.name}</strong><span>${d.region} · ${d.area}</span><span class="sys">${t('sys_' + d.system)}</span></button>`).join('')}</div>`
+        + (window.BRISCOLA_NO_NET ? '' : `<details class="unlock-box"><summary>${t('unlock_t')}</summary>
+          <div class="room-join"><input id="unlock-code" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="${t('unlock_t')}"><button class="btn btn-primary" data-act="unlock">${t('unlock')}</button></div>
+          <p class="pair-status" id="unlock-status" role="status"></p></details>`);
     } else if (sh.type === 'menu') {
       const hostItems = isGuest()
         ? `<button class="btn btn-ghost" data-act="ask-leave">${t('leave')}</button>`
@@ -2451,7 +2524,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     } else if (sh.type === 'confirm') {
       body = `<p class="confirm-text">${t(sh.text)}</p><div class="btn-row"><button class="btn btn-ghost" data-act="close">${t('cancel')}</button><button class="btn btn-primary" data-act="${sh.act}">${t(sh.yes)}</button></div>`;
     } else if (sh.type === 'summary') body = summaryHTML();
-    else if (sh.type === 'notice') body = head('Briscola') + `<p>${esc(sh.text)}</p>`;
+    else if (sh.type === 'notice') body = head('EBriscola') + `<p>${esc(sh.text)}</p>`;
     L.innerHTML = `<div class="overlay" data-act="${sh.type === 'summary' || sh.type === 'confirm' ? '' : 'backdrop'}"><div class="sheet" role="dialog" aria-modal="true">${body}</div></div>`;
   }
 
@@ -2925,9 +2998,9 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     const r = net.room;
     if (!r || r.status !== 'open') return;
     const url = joinUrl(r.code);
-    const text = `Briscola: ${t('lobby_code')} ${r.code}`;
+    const text = `EBriscola: ${t('lobby_code')} ${r.code}`;
     try {
-      if (navigator.share) { await navigator.share({ title: 'Briscola', text, url }); return; }
+      if (navigator.share) { await navigator.share({ title: 'EBriscola', text, url }); return; }
     } catch (e) { if (e && e.name === 'AbortError') return; }
     try { await navigator.clipboard.writeText(url); btn.textContent = t('link_copied'); } catch (e) { btn.textContent = url; }
   }
@@ -3344,6 +3417,17 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       case 'deal': persist(); startMatch(); return;
       case 'resume': resume(); return;
       case 'decks': ui.sheet = { type: 'decks' }; render(); return;
+      case 'unlock': {
+        const inp = $('#unlock-code');
+        const id = inp && D.unlockDeck(inp.value);
+        if (!id) { pairSet('unlock-status', esc(t('unlock_bad'))); return; }
+        if (!S.settings.unlocked.includes(id)) S.settings.unlocked.push(id);
+        st.deck = id; persist();
+        if (!$('#setup').hidden) renderSetup();
+        render();
+        pairSet('unlock-status', esc(t('unlock_ok', { name: D.get(id).name })));
+        return;
+      }
       case 'pick-deck':
         st.deck = v; persist();
         ui.sheet = null;
@@ -3456,6 +3540,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       S.settings.seats.forEach((s) => { s.remote = null; s.open = false; });
       if (!fix(S.settings.lobby)) S.settings.lobby = JSON.parse(JSON.stringify(DEFAULTS.lobby));
       if (!S.settings.knownDevs) S.settings.knownDevs = {};
+      if (!Array.isArray(S.settings.unlocked)) S.settings.unlocked = [];
       if (saved.session && saved.session.G && saved.session.G.v === 1) S.session = saved.session;
     }
     if (!N) S.settings.hostMode = null;

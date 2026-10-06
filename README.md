@@ -1,4 +1,4 @@
-# Briscola
+# EBriscola
 
 Briscola for 2 to 4 players, on one phone passed around or on separate phones connected to each other. It's a web page: no app store, no accounts, and it works offline once loaded.
 
@@ -9,6 +9,7 @@ Briscola for 2 to 4 players, on one phone passed around or on separate phones co
 - **Separate phones.** Each player sees only their own cards on their own phone. Seats can mix people on this phone, people on other phones and CPU players.
 - **CPU players** fill empty seats (Easy / Normal / Hard). Hard counts cards and plays the 2-player endgame perfectly.
 - **14 regional decks:** Triestine (default), Trevigiane, Bergamasche, Bresciane, Trentine, Piacentine, Romagnole, Napoletane, Siciliane, Sarde, Toscane, Genovesi, Piemontesi, Milanesi. Cards are drawn in SVG, in a stylised interpretation of each pattern (suit system, single or double-headed courts, colours, card back). They are not scans of real decks. On separate phones each person picks their own deck style.
+- **Settlers (private deck):** a Trieste-style deck with photos on the aces and court cards. Hidden until unlocked: Deck → **Unlock a deck** → enter the code. The code is a cosmetic hider, not security (anyone reading the source can find the photos). Not available in the offline single-file build.
 - **Optional rules:** swap the 2 or 7 of trumps for the face-up briscola; partners see each other's hand once the deck runs out; show or hide the running score; matches of 1, 2, 3 or 5 hands.
 - English and Italian UI. Autosaves: closing the browser mid-hand loses nothing.
 
@@ -50,6 +51,22 @@ If phones won't connect on one phone's hotspot, try the other phone's hotspot or
 ### Privacy and fairness
 
 The host sends each phone only what that player may see: their own hand, the table, and the partner's hand only when that rule is on and the deck is finished. The other phones never receive the host's cards. Nothing is sent to any server except the room-code handshake.
+
+## Settlers deck photos
+
+Photos live in `assets/settlers/`, one JPEG per card, named by card id: `cNN.jpg`. The id is suit × 10 + rank − 1. Suits: Denari 0, Coppe 1, Spade 2, Bastoni 3. Ranks: Asso 1, Fante 8, Cavallo 9, Re 10. If a card has no file, it shows the normal Trieste art, so the deck stays playable while photos are added.
+
+| Suit | Asso | Fante | Cavallo | Re |
+| --- | --- | --- | --- | --- |
+| Denari | c00 | c07 | c08 | c09 |
+| Coppe | c10 | c17 | c18 | c19 |
+| Spade | c20 | c27 | c28 | c29 |
+| Bastoni | c30 | c37 | c38 | c39 |
+
+- Aces: the photo sits in an oval medallion, cropped to a 64:85 ratio (for example 256×340). Keep faces in the centre.
+- Courts: the photo fills the card behind the corner indices and a bottom banner (suit and role). Crop to 9:16 (for example 540×960), with the subject in the middle and nothing important in the top-left corner, the bottom-right corner or the bottom 12%.
+- To use more cards (e.g. 2–7), add their ids to `photos` in the `settlers` entry in `src/decks.js`; number cards then use the ace-style medallion, with a ribbon naming the card. Run `npm run build` and commit.
+- Upload from a phone or browser: GitHub → this branch → `assets/settlers` → **Add file → Upload files**. Keep each file under about 150 KB so the deck loads fast on mobile data. Photos are cached offline after the first time they are shown.
 
 ## Development
 

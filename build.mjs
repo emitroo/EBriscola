@@ -10,7 +10,7 @@ const scripts = ['vendor/qrcode.min.js', 'vendor/jsQR.min.js', 'engine.js', 'ai.
 // Keep a literal "</script" out of inline code.
 const js = scripts.replace(/<\/script/gi, '<\\/script');
 
-const description = 'Briscola for 2 to 4 players on one phone or several, with regional Italian decks.';
+const description = 'EBriscola: Briscola for 2 to 4 players on one phone or several, with regional Italian decks.';
 
 const standalone = `<!doctype html>
 <html lang="en">
@@ -22,8 +22,8 @@ const standalone = `<!doctype html>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Briscola">
-<title>Briscola</title>
+<meta name="apple-mobile-web-app-title" content="EBriscola">
+<title>EBriscola</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -56,7 +56,7 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 `;
 
 // The Artifact host wraps the page in its own document skeleton and pads :root by the safe-area insets.
-const artifact = `<title>Briscola</title>
+const artifact = `<title>EBriscola</title>
 <style>
 ${css}
 body { touch-action: manipulation; }

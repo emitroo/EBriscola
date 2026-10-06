@@ -1,7 +1,7 @@
 {
-  "name": "Briscola",
-  "short_name": "Briscola",
-  "description": "Briscola for 2 to 4 players on one phone, with regional Italian decks.",
+  "name": "EBriscola",
+  "short_name": "EBriscola",
+  "description": "EBriscola: Briscola for 2 to 4 players, on one phone or several, with regional Italian decks.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

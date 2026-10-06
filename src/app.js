@@ -30,7 +30,7 @@
     lobby: { n: 2, seats: [0, 1, 2, 3].map((p) => blankSeat({ open: p > 0 })) },
     hideHands: true, twoTap: true, swap: 0, partnerView: true, showScore: false,
     target: 1, speed: 'normal', sound: true,
-    myName: '', knownDevs: {}, hostMode: null, room: null, lastRoom: null, turn: '',
+    myName: '', knownDevs: {}, hostMode: null, room: null, lastRoom: null, turn: '', unlocked: [],
   };
 
   const S = { settings: JSON.parse(JSON.stringify(DEFAULTS)), session: null, savedSession: null };
@@ -69,7 +69,9 @@
   }
   const SPEED = { slow: 1.5, normal: 1, fast: 0.55 };
   const spd = () => SPEED[S.settings.speed] || 1;
-  const deckId = () => S.settings.deck;
+  /** Decks shown in the picker: hidden ones only once unlocked (and never in builds without the photo files). */
+  const deckAvailable = (d) => !d.hidden || (!window.BRISCOLA_NO_NET && (S.settings.unlocked || []).includes(d.id));
+  const deckId = () => (deckAvailable(D.get(S.settings.deck)) ? S.settings.deck : 'triestine');
   const deck = () => D.get(deckId());
 
   const isGuest = () => net.role === 'guest';
@@ -214,7 +216,7 @@
   // ================= SETUP SCREENS =================
   const seg = (act, opts, cur) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" data-act="${act}" data-v="${v}" aria-pressed="${String(cur) === String(v)}">${esc(l)}</button>`).join('')}</div>`;
   const sw = (id, key) => `<span class="switch"><input type="checkbox" id="${id}" data-set="${key}" ${S.settings[key] ? 'checked' : ''}><span></span></span>`;
-  const brand = (sub) => `<header class="brand"><div><h1 class="wordmark">Briscola</h1><p class="wordmark-sub">${sub}</p></div><div class="brand-suits">${[0, 1, 2, 3].map((s) => D.suitIcon(s, deckId())).join('')}</div></header>`;
+  const brand = (sub) => `<header class="brand"><div><h1 class="wordmark">EBriscola</h1><p class="wordmark-sub">${sub}</p></div><div class="brand-suits">${[0, 1, 2, 3].map((s) => D.suitIcon(s, deckId())).join('')}</div></header>`;
   const backBar = (act, label) => `<button class="back-link" data-act="${act}">${ICON.left}<span>${label}</span></button>`;
 
   function renderSetup() {
@@ -572,7 +574,10 @@
     let body = '';
     if (sh.type === 'rules') body = head(t('rules')) + t('rules_html');
     else if (sh.type === 'decks') {
-      body = head(t('choose_deck')) + `<div class="deck-grid">${D.list.map((d) => `<button class="deck-tile" data-act="pick-deck" data-v="${d.id}" aria-pressed="${d.id === deckId()}">${fanHTML(d)}<strong>${d.name}</strong><span>${d.region} · ${d.area}</span><span class="sys">${t('sys_' + d.system)}</span></button>`).join('')}</div>`;
+      body = head(t('choose_deck')) + `<div class="deck-grid">${D.list.filter(deckAvailable).map((d) => `<button class="deck-tile" data-act="pick-deck" data-v="${d.id}" aria-pressed="${d.id === deckId()}">${fanHTML(d)}<strong>${d.name}</strong><span>${d.region} · ${d.area}</span><span class="sys">${t('sys_' + d.system)}</span></button>`).join('')}</div>`
+        + (window.BRISCOLA_NO_NET ? '' : `<details class="unlock-box"><summary>${t('unlock_t')}</summary>
+          <div class="room-join"><input id="unlock-code" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="${t('unlock_t')}"><button class="btn btn-primary" data-act="unlock">${t('unlock')}</button></div>
+          <p class="pair-status" id="unlock-status" role="status"></p></details>`);
     } else if (sh.type === 'menu') {
       const hostItems = isGuest()
         ? `<button class="btn btn-ghost" data-act="ask-leave">${t('leave')}</button>`
@@ -599,7 +604,7 @@
     } else if (sh.type === 'confirm') {
       body = `<p class="confirm-text">${t(sh.text)}</p><div class="btn-row"><button class="btn btn-ghost" data-act="close">${t('cancel')}</button><button class="btn btn-primary" data-act="${sh.act}">${t(sh.yes)}</button></div>`;
     } else if (sh.type === 'summary') body = summaryHTML();
-    else if (sh.type === 'notice') body = head('Briscola') + `<p>${esc(sh.text)}</p>`;
+    else if (sh.type === 'notice') body = head('EBriscola') + `<p>${esc(sh.text)}</p>`;
     L.innerHTML = `<div class="overlay" data-act="${sh.type === 'summary' || sh.type === 'confirm' ? '' : 'backdrop'}"><div class="sheet" role="dialog" aria-modal="true">${body}</div></div>`;
   }
 
@@ -1073,9 +1078,9 @@
     const r = net.room;
     if (!r || r.status !== 'open') return;
     const url = joinUrl(r.code);
-    const text = `Briscola: ${t('lobby_code')} ${r.code}`;
+    const text = `EBriscola: ${t('lobby_code')} ${r.code}`;
     try {
-      if (navigator.share) { await navigator.share({ title: 'Briscola', text, url }); return; }
+      if (navigator.share) { await navigator.share({ title: 'EBriscola', text, url }); return; }
     } catch (e) { if (e && e.name === 'AbortError') return; }
     try { await navigator.clipboard.writeText(url); btn.textContent = t('link_copied'); } catch (e) { btn.textContent = url; }
   }
@@ -1492,6 +1497,17 @@
       case 'deal': persist(); startMatch(); return;
       case 'resume': resume(); return;
       case 'decks': ui.sheet = { type: 'decks' }; render(); return;
+      case 'unlock': {
+        const inp = $('#unlock-code');
+        const id = inp && D.unlockDeck(inp.value);
+        if (!id) { pairSet('unlock-status', esc(t('unlock_bad'))); return; }
+        if (!S.settings.unlocked.includes(id)) S.settings.unlocked.push(id);
+        st.deck = id; persist();
+        if (!$('#setup').hidden) renderSetup();
+        render();
+        pairSet('unlock-status', esc(t('unlock_ok', { name: D.get(id).name })));
+        return;
+      }
       case 'pick-deck':
         st.deck = v; persist();
         ui.sheet = null;
@@ -1604,6 +1620,7 @@
       S.settings.seats.forEach((s) => { s.remote = null; s.open = false; });
       if (!fix(S.settings.lobby)) S.settings.lobby = JSON.parse(JSON.stringify(DEFAULTS.lobby));
       if (!S.settings.knownDevs) S.settings.knownDevs = {};
+      if (!Array.isArray(S.settings.unlocked)) S.settings.unlocked = [];
       if (saved.session && saved.session.G && saved.session.G.v === 1) S.session = saved.session;
     }
     if (!N) S.settings.hostMode = null;
