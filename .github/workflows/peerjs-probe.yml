@@ -1,14 +1,23 @@
-name: PeerJS server probe
+name: Network probes
 on: workflow_dispatch
 permissions:
   contents: read
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node test/e2e/peerjs-probe.js
+      - name: PeerJS server message shapes
+        run: node test/e2e/peerjs-probe.js
+      - name: Install Playwright Chromium
+        if: always()
+        run: |
+          npm i --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Public TURN relay (Open Relay)
+        if: always()
+        run: node test/e2e/turn-probe.js
