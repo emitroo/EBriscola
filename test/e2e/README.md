@@ -13,7 +13,8 @@ node test/e2e/peer-server.js                # optional local signalling server (
 export BROKER="ws://localhost:9000/peerjs?key=peerjs"   # omit to use 0.peerjs.com
 
 node test/e2e/one-phone.js 4 1              # 1 human + 3 CPU on one phone
-node test/e2e/two-phones.js online          # host + guest join by code, direct connection
+node test/e2e/two-phones.js online          # host + guest join by code
+node test/e2e/two-phones.js online relay    # same, forced through the built-in TURN relay
 node test/e2e/lobby-online.js               # host + 3 guests join by code, 4-phone hand
 node test/e2e/reconnect.js online           # drop, automatic rejoin, page reload + rejoin
 node test/e2e/two-phones.js nearby          # nearby QR pairing (text codes), full hand
@@ -21,7 +22,7 @@ node test/e2e/reconnect.js nearby           # drop and re-pair with QR
 node test/e2e/camera-scan.js                # guest scans a real host QR through a fake camera
 node test/e2e/pair-loop.js 9                # repeated pairing, to catch intermittent failures
 node test/e2e/peerjs-probe.js               # which message shapes the signalling server accepts
-TURN_JSON='[...]' node test/e2e/turn-probe.js   # does a TURN relay work
+node test/e2e/turn-probe.js                 # does the built-in TURN relay work (or TURN_JSON='[...]')
 ```
 
 Screenshots go to `$OUT` (default: the system temp directory).

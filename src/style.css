@@ -365,3 +365,5 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .relay-box summary { cursor: pointer; font-size: 14px; color: var(--wine); font-weight: 600; }
 .relay-box > * + * { margin-top: 8px; }
 .relay-box textarea { width: 100%; min-width: 0; border: 1.5px solid var(--paper-2); background: #fffdf7; border-radius: 9px; padding: 9px 10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--ink); resize: vertical; }
+
+.pair-status .diag { display: block; font-size: 11px; font-weight: 400; color: var(--ink-soft); font-family: ui-monospace, Menlo, Consolas, monospace; }

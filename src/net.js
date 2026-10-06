@@ -13,7 +13,25 @@
   const PROTOCOL = 1;
   const DEFAULT_BROKER = 'wss://0.peerjs.com/peerjs?key=peerjs';
   const STUN = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }];
-  const ONLINE_ICE = STUN;
+  // Relay (TURN) servers for online games, used only when two phones cannot reach each other directly,
+  // which is common when both are on mobile data. Metered.ca account of the game's owner.
+  // These are visible to anyone who opens the page: limit or rotate them in the Metered dashboard.
+  const TURN_USER = '27324b23faaae7d28cd39449', TURN_PASS = 'cixkNKYCrqW/8iZg';
+  const TURN = [{
+    urls: [
+      'turn:global.relay.metered.ca:80',
+      'turn:global.relay.metered.ca:80?transport=tcp',
+      'turn:global.relay.metered.ca:443',
+      'turns:global.relay.metered.ca:443?transport=tcp',
+    ],
+    username: TURN_USER, credential: TURN_PASS,
+  }];
+  const ONLINE_ICE = STUN.concat([{ urls: 'stun:stun.relay.metered.ca:80' }], TURN);
+
+  /** Test switch: ?relay=1 forces online connections through the TURN relay, as on a blocking network. */
+  function relayOnly() {
+    try { return new URLSearchParams(location.search).get('relay') === '1'; } catch (e) { return false; }
+  }
 
   /** Pull TURN server details out of whatever a provider shows (JSON, or a JavaScript iceServers snippet).
    *  Returns RTCIceServer entries, or null if no TURN URL with credentials was found. */
@@ -99,7 +117,7 @@
     constructor(opts) {
       opts = opts || {};
       this.trickle = !!opts.trickle;
-      this.pc = new RTCPeerConnection({ iceServers: opts.ice || [] });
+      this.pc = new RTCPeerConnection({ iceServers: opts.ice || [], iceTransportPolicy: opts.relayOnly ? 'relay' : 'all' });
       this.handlers = {};
       this.pending = [];
       this.open = false;
@@ -342,7 +360,7 @@
   }
 
   root.BriscolaNet = {
-    PROTOCOL, STUN, ONLINE_ICE, parseIceConfig, Link, Broker, signal, pack, unpack, qrSvg, startScanner, deviceId, roomCode, normaliseRoom, roomPeerId, brokerUrl,
+    PROTOCOL, STUN, ONLINE_ICE, parseIceConfig, relayOnly, Link, Broker, signal, pack, unpack, qrSvg, startScanner, deviceId, roomCode, normaliseRoom, roomPeerId, brokerUrl,
     supported: () => typeof RTCPeerConnection !== 'undefined',
   };
 })(typeof self !== 'undefined' ? self : this);

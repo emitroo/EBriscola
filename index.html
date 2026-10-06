@@ -382,6 +382,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .relay-box > * + * { margin-top: 8px; }
 .relay-box textarea { width: 100%; min-width: 0; border: 1.5px solid var(--paper-2); background: #fffdf7; border-radius: 9px; padding: 9px 10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--ink); resize: vertical; }
 
+.pair-status .diag { display: block; font-size: 11px; font-weight: 400; color: var(--ink-soft); font-family: ui-monospace, Menlo, Consolas, monospace; }
+
 body { touch-action: manipulation; }
 </style>
 </head>
@@ -1344,7 +1346,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     paste_host: 'Paste the host code', use_code: 'Use code', your_reply: 'Your reply code',
     room_fail: 'No game found with that code. Check it with the host.',
     broker_fail: 'Cannot reach the matchmaking server. Use QR pairing instead: it works offline.',
-    p2p_fail: 'Found the game but the phones could not connect. On mobile data, the host can add a relay server in the lobby (see “Players on mobile data can’t connect?”), or join the same Wi-Fi.',
+    p2p_fail: 'Found the game but the phones could not connect, even through the relay. Check both phones have a working connection and try again.',
     lobby_title: 'Connected to {name}', lobby_wait: 'Waiting for {name} to deal.', leave: 'Leave game',
     seats_title: 'Seats', you_tag: 'this phone',
     lost: 'Connection lost.', reconnecting: 'Reconnecting…',
@@ -1387,7 +1389,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     paste_host: 'Incolla il codice di chi ospita', use_code: 'Usa il codice', your_reply: 'Il tuo codice di risposta',
     room_fail: 'Nessuna partita con questo codice. Controllalo con chi ospita.',
     broker_fail: 'Server di collegamento irraggiungibile. Usa il QR: funziona offline.',
-    p2p_fail: 'Partita trovata ma i telefoni non riescono a collegarsi. Con i dati mobili, chi ospita può aggiungere un server relay nella stanza, oppure collegatevi alla stessa Wi-Fi.',
+    p2p_fail: 'Partita trovata ma i telefoni non riescono a collegarsi, nemmeno tramite il relay. Controlla che entrambi abbiano connessione e riprova.',
     lobby_title: 'Connesso a {name}', lobby_wait: 'Si aspetta che {name} distribuisca.', leave: 'Esci dalla partita',
     seats_title: 'Posti', you_tag: 'questo telefono',
     lost: 'Connessione persa.', reconnecting: 'Riconnessione…',
@@ -1464,15 +1466,15 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   });
 
   Object.assign(en, {
-    relay_t: 'Players on mobile data can’t connect?',
-    relay_d: 'Some mobile networks block direct connections between phones. A relay (TURN) server fixes that. Make a free account at metered.ca, create TURN credentials, and paste the ICE servers settings it shows here. Only the host needs this.',
+    relay_t: 'Use your own relay server (advanced)',
+    relay_d: 'The game already includes a relay (TURN) server for phones that cannot connect directly, for example on mobile data. To add your own as well, paste its ICE servers settings (e.g. from metered.ca) here.',
     relay_save: 'Save relay', relay_ok: 'Relay saved ({n} server addresses). New connections will use it.',
     relay_bad: 'No TURN address with a username and credential found in that text.',
   });
 
   Object.assign(it, {
-    relay_t: 'Chi usa i dati mobili non riesce a collegarsi?',
-    relay_d: 'Alcune reti mobili bloccano le connessioni dirette tra telefoni. Un server relay (TURN) risolve il problema. Crea un account gratuito su metered.ca, genera le credenziali TURN e incolla qui le impostazioni ICE servers che mostra. Serve solo a chi ospita.',
+    relay_t: 'Usa un tuo server relay (avanzato)',
+    relay_d: 'Il gioco include gi\u00e0 un server relay (TURN) per i telefoni che non riescono a collegarsi direttamente, per esempio con i dati mobili. Per aggiungerne uno tuo, incolla qui le sue impostazioni ICE servers (per esempio da metered.ca).',
     relay_save: 'Salva relay', relay_ok: 'Relay salvato ({n} indirizzi). Le nuove connessioni lo useranno.',
     relay_bad: 'Nel testo non c’è un indirizzo TURN con nome utente e credenziale.',
   });
@@ -1495,7 +1497,25 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   const PROTOCOL = 1;
   const DEFAULT_BROKER = 'wss://0.peerjs.com/peerjs?key=peerjs';
   const STUN = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }];
-  const ONLINE_ICE = STUN;
+  // Relay (TURN) servers for online games, used only when two phones cannot reach each other directly,
+  // which is common when both are on mobile data. Metered.ca account of the game's owner.
+  // These are visible to anyone who opens the page: limit or rotate them in the Metered dashboard.
+  const TURN_USER = '27324b23faaae7d28cd39449', TURN_PASS = 'cixkNKYCrqW/8iZg';
+  const TURN = [{
+    urls: [
+      'turn:global.relay.metered.ca:80',
+      'turn:global.relay.metered.ca:80?transport=tcp',
+      'turn:global.relay.metered.ca:443',
+      'turns:global.relay.metered.ca:443?transport=tcp',
+    ],
+    username: TURN_USER, credential: TURN_PASS,
+  }];
+  const ONLINE_ICE = STUN.concat([{ urls: 'stun:stun.relay.metered.ca:80' }], TURN);
+
+  /** Test switch: ?relay=1 forces online connections through the TURN relay, as on a blocking network. */
+  function relayOnly() {
+    try { return new URLSearchParams(location.search).get('relay') === '1'; } catch (e) { return false; }
+  }
 
   /** Pull TURN server details out of whatever a provider shows (JSON, or a JavaScript iceServers snippet).
    *  Returns RTCIceServer entries, or null if no TURN URL with credentials was found. */
@@ -1581,7 +1601,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     constructor(opts) {
       opts = opts || {};
       this.trickle = !!opts.trickle;
-      this.pc = new RTCPeerConnection({ iceServers: opts.ice || [] });
+      this.pc = new RTCPeerConnection({ iceServers: opts.ice || [], iceTransportPolicy: opts.relayOnly ? 'relay' : 'all' });
       this.handlers = {};
       this.pending = [];
       this.open = false;
@@ -1824,7 +1844,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   }
 
   root.BriscolaNet = {
-    PROTOCOL, STUN, ONLINE_ICE, parseIceConfig, Link, Broker, signal, pack, unpack, qrSvg, startScanner, deviceId, roomCode, normaliseRoom, roomPeerId, brokerUrl,
+    PROTOCOL, STUN, ONLINE_ICE, parseIceConfig, relayOnly, Link, Broker, signal, pack, unpack, qrSvg, startScanner, deviceId, roomCode, normaliseRoom, roomPeerId, brokerUrl,
     supported: () => typeof RTCPeerConnection !== 'undefined',
   };
 })(typeof self !== 'undefined' ? self : this);
@@ -2874,7 +2894,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       const pl = m.payload;
       if (m.type === 'OFFER' && pl && pl.sdp && pl.sdp.sdp) {
         if (!pl.metadata || pl.metadata.v !== N.PROTOCOL) return;
-        const link = new N.Link({ trickle: true, ice: onlineIce() });
+        const link = new N.Link({ trickle: true, ice: onlineIce(), relayOnly: N.relayOnly() });
         pending[m.src] = link;
         link.on('candidate', (c) => broker.send('CANDIDATE', m.src, N.signal.candidate(c, pl.connectionId)));
         adoptLink(link, 'room');
@@ -3097,7 +3117,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     try { await broker.connect(8000); } catch (e) { status('broker_fail'); return done(false); }
 
     const cid = N.signal.connectionId();
-    const link = new N.Link({ trickle: true, ice: onlineIce() });
+    const link = new N.Link({ trickle: true, ice: onlineIce(), relayOnly: N.relayOnly() });
     let answered = false, expired = false;
     link.on('candidate', (c) => broker.send('CANDIDATE', hostId, N.signal.candidate(c, cid)));
     broker.on('message', (m) => {
@@ -3116,10 +3136,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       // Long enough for a connection through the TURN relay, which takes a few extra round trips.
       await link.whenOpen(20000);
     } catch (e) {
+      const ice = link.pc.iceConnectionState;
       link.close('failed');
       broker.close();
       // No answer at all means nobody is hosting that code.
       status(expired || !answered ? 'room_fail' : 'p2p_fail');
+      if (!silent && answered) pairSet('pj-room-status', `${esc(ui.joinStatus)}<small class="diag">ICE: ${esc(ice)}</small>`);
       return done(false);
     }
     broker.close();

@@ -1,13 +1,12 @@
 // Can two peers connect when forced through a TURN relay (iceTransportPolicy: 'relay')?
 // Prints the relay candidates gathered and whether the data channel opened.
 const L = require('./lib');
-// Usage: TURN_JSON='[{"urls":["turn:host:80"],"username":"u","credential":"p"}]' node turn-probe.js
-if (!process.env.TURN_JSON) { console.log('Set TURN_JSON to the relay servers to test.'); process.exit(2); }
-const ICE = JSON.parse(process.env.TURN_JSON);
+// Uses the relay servers built into the app, or TURN_JSON='[{"urls":[...],"username":"u","credential":"p"}]'.
 (async () => {
   const b = await L.launch();
   const p = await (await b.newContext()).newPage();
-  await p.goto('about:blank');
+  await p.goto(L.url());
+  const ICE = process.env.TURN_JSON ? JSON.parse(process.env.TURN_JSON) : await p.evaluate(() => window.BriscolaNet.ONLINE_ICE);
   const r = await p.evaluate(async (ice) => {
     const cfg = { iceServers: ice, iceTransportPolicy: 'relay' };
     const a = new RTCPeerConnection(cfg), c = new RTCPeerConnection(cfg);

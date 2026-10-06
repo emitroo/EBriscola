@@ -36,7 +36,7 @@ In both multiplayer modes one person hosts. Their phone runs the game and deals;
 
 Connection setup goes through the free public PeerJS server (0.peerjs.com); game traffic then goes directly between the phones. If someone's connection drops, their phone rejoins by itself; after closing the app, opening it again shows the join screen with the last code filled in.
 
-**Mobile data:** a direct connection works on many networks, but some mobile networks block it when both phones are on mobile data. The fix is a relay (TURN) server. Make a free account at metered.ca (free plan), create TURN credentials, and paste the ICE servers settings it shows into the host's lobby under *Players on mobile data can't connect?*. Only the host needs this. Alternatively, one phone joins Wi-Fi, or you use the Nearby mode on a hotspot.
+**Mobile data:** when the phones can't reach each other directly (common when both are on mobile data), the connection goes through a relay (TURN) server built into the game (Metered.ca, free plan with a monthly allowance). The relay credentials are visible to anyone who opens the page, which is normal for a static site; set a usage cap or rotate them in the Metered dashboard if needed (`src/net.js`). The host lobby also has an advanced field to add another relay.
 
 ### Nearby, no internet (QR codes)
 

@@ -34,6 +34,12 @@ jobs:
           curl -sf http://localhost:8765/ > /dev/null
       - name: Online, direct connection (2 phones)
         run: node test/e2e/two-phones.js online
+      - name: Built-in TURN relay works
+        if: always()
+        run: node test/e2e/turn-probe.js
+      - name: Online through the TURN relay only, as on blocking mobile networks (2 phones)
+        if: always()
+        run: node test/e2e/two-phones.js online relay
       - name: Online lobby, host + 3 guests join by code
         if: always()
         run: node test/e2e/lobby-online.js

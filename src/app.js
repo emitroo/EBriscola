@@ -1042,7 +1042,7 @@
       const pl = m.payload;
       if (m.type === 'OFFER' && pl && pl.sdp && pl.sdp.sdp) {
         if (!pl.metadata || pl.metadata.v !== N.PROTOCOL) return;
-        const link = new N.Link({ trickle: true, ice: onlineIce() });
+        const link = new N.Link({ trickle: true, ice: onlineIce(), relayOnly: N.relayOnly() });
         pending[m.src] = link;
         link.on('candidate', (c) => broker.send('CANDIDATE', m.src, N.signal.candidate(c, pl.connectionId)));
         adoptLink(link, 'room');
@@ -1265,7 +1265,7 @@
     try { await broker.connect(8000); } catch (e) { status('broker_fail'); return done(false); }
 
     const cid = N.signal.connectionId();
-    const link = new N.Link({ trickle: true, ice: onlineIce() });
+    const link = new N.Link({ trickle: true, ice: onlineIce(), relayOnly: N.relayOnly() });
     let answered = false, expired = false;
     link.on('candidate', (c) => broker.send('CANDIDATE', hostId, N.signal.candidate(c, cid)));
     broker.on('message', (m) => {
@@ -1284,10 +1284,12 @@
       // Long enough for a connection through the TURN relay, which takes a few extra round trips.
       await link.whenOpen(20000);
     } catch (e) {
+      const ice = link.pc.iceConnectionState;
       link.close('failed');
       broker.close();
       // No answer at all means nobody is hosting that code.
       status(expired || !answered ? 'room_fail' : 'p2p_fail');
+      if (!silent && answered) pairSet('pj-room-status', `${esc(ui.joinStatus)}<small class="diag">ICE: ${esc(ice)}</small>`);
       return done(false);
     }
     broker.close();

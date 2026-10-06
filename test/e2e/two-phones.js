@@ -1,10 +1,12 @@
-// Two phones play a full hand. Usage: node two-phones.js nearby|online
+// Two phones play a full hand. Usage: node two-phones.js nearby|online [relay]
+//   relay forces the online connection through the TURN relay, as on networks that block direct connections.
 //   online uses the real PeerJS server unless BROKER is set (e.g. ws://localhost:9000/peerjs?key=peerjs).
 const L = require('./lib');
 (async () => {
-  const mode = process.argv[2] || 'nearby';
+  const mode = process.argv[2] || 'nearby', relay = process.argv[3] === 'relay';
   const params = {};
   if (process.env.BROKER) params.broker = process.env.BROKER;
+  if (relay) params.relay = '1';
   const b = await L.launch();
   const host = await L.phone(b, 'Pixel 7', params), guest = await L.phone(b, 'iPhone 13', params);
   const t0 = Date.now();
@@ -17,7 +19,13 @@ const L = require('./lib');
     L.log('lobby code', code);
     await host.screenshot({ path: `${L.OUT}/host-lobby-${mode}.png` });
     await L.joinOnline(guest, code, 'Anna');
-    L.log('joined in', Date.now() - t0, 'ms');
+    const route = await guest.evaluate(async () => {
+      const st = await window.__briscola.net.guest.link.pc.getStats();
+      let pair = null; const c = {};
+      st.forEach((r) => { if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') pair = r; if (r.type === 'local-candidate' || r.type === 'remote-candidate') c[r.id] = r; });
+      return pair ? `${c[pair.localCandidateId].candidateType}/${c[pair.localCandidateId].protocol} -> ${c[pair.remoteCandidateId].candidateType}` : 'unknown';
+    });
+    L.log('joined in', Date.now() - t0, 'ms; route (local -> remote candidate):', route);
   }
   await guest.waitForTimeout(500);
   L.log('guest lobby:', await guest.$eval('.lobby-seats', (e) => e.innerText.replace(/\n/g, ' | ')));
