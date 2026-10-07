@@ -1,0 +1,100 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Stack",
+      "Effect": "Allow",
+      "Action": "cloudformation:*",
+      "Resource": [
+        "arn:aws:cloudformation:us-east-1:*:stack/ebriscola/*",
+        "arn:aws:cloudformation:us-east-1:*:changeSet/*"
+      ]
+    },
+    {
+      "Sid": "StackReadAndValidate",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:ValidateTemplate", "cloudformation:GetTemplateSummary", "cloudformation:ListStacks",
+        "sts:GetCallerIdentity", "iam:ListOpenIDConnectProviders",
+        "cloudwatch:DescribeAlarms", "cloudwatch:GetMetricData", "cloudwatch:GetMetricStatistics", "cloudwatch:ListMetrics"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Buckets",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": ["arn:aws:s3:::ebriscola-*", "arn:aws:s3:::ebriscola-*/*"]
+    },
+    {
+      "Sid": "CloudFront",
+      "Effect": "Allow",
+      "Action": "cloudfront:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "Functions",
+      "Effect": "Allow",
+      "Action": "lambda:*",
+      "Resource": "arn:aws:lambda:us-east-1:*:function:ebriscola-*"
+    },
+    {
+      "Sid": "Counters",
+      "Effect": "Allow",
+      "Action": "dynamodb:*",
+      "Resource": "arn:aws:dynamodb:us-east-1:*:table/ebriscola-*"
+    },
+    {
+      "Sid": "AlertsAndLogs",
+      "Effect": "Allow",
+      "Action": ["sns:*", "logs:*", "cloudwatch:PutMetricAlarm", "cloudwatch:DeleteAlarms", "cloudwatch:SetAlarmState",
+                 "cloudwatch:TagResource", "cloudwatch:UntagResource", "cloudwatch:ListTagsForResource"],
+      "Resource": [
+        "arn:aws:sns:us-east-1:*:ebriscola-*",
+        "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/ebriscola-*",
+        "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/ebriscola-*:*",
+        "arn:aws:cloudwatch:us-east-1:*:alarm:ebriscola-*"
+      ]
+    },
+    {
+      "Sid": "LogGroupDescribe",
+      "Effect": "Allow",
+      "Action": ["logs:DescribeLogGroups", "sns:ListTopics"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Budget",
+      "Effect": "Allow",
+      "Action": ["budgets:ViewBudget", "budgets:ModifyBudget", "budgets:TagResource", "budgets:UntagResource", "budgets:ListTagsForResource"],
+      "Resource": "arn:aws:budgets::*:budget/ebriscola-*"
+    },
+    {
+      "Sid": "StackRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:TagRole", "iam:UntagRole", "iam:UpdateRole",
+        "iam:UpdateAssumeRolePolicy", "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy",
+        "iam:ListRolePolicies", "iam:ListAttachedRolePolicies", "iam:PassRole"
+      ],
+      "Resource": "arn:aws:iam::*:role/ebriscola-*"
+    },
+    {
+      "Sid": "GitHubIdentityProvider",
+      "Effect": "Allow",
+      "Action": ["iam:CreateOpenIDConnectProvider", "iam:GetOpenIDConnectProvider", "iam:DeleteOpenIDConnectProvider",
+                 "iam:TagOpenIDConnectProvider", "iam:UpdateOpenIDConnectProviderThumbprint"],
+      "Resource": "arn:aws:iam::*:oidc-provider/token.actions.githubusercontent.com"
+    },
+    {
+      "Sid": "NeverTheseEvenIfAddedElsewhere",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateUser", "iam:CreateAccessKey", "iam:CreateLoginProfile", "iam:UpdateLoginProfile",
+        "iam:AttachUserPolicy", "iam:PutUserPolicy", "iam:AttachRolePolicy", "iam:CreatePolicy", "iam:CreatePolicyVersion",
+        "iam:AddUserToGroup", "iam:DeactivateMFADevice", "iam:DeleteAccountPasswordPolicy",
+        "organizations:*", "account:*", "billing:*", "payments:*", "sts:AssumeRole"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

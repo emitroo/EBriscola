@@ -77,6 +77,14 @@ inside the free 10 alarms and 2 budgets.
 Re-running `bash aws/deploy.sh` later updates the stack in place (e.g. a new code: make a new pack, upload it,
 re-run with the new code).
 
+## Letting Claude operate it
+
+Create an IAM user (e.g. `ebriscola-claude`, no console access) with `aws/operator-policy.json` as its only policy:
+it can deploy, inspect and remove this stack (everything named `ebriscola-*`) and nothing else; user management,
+billing and role assumption are explicitly denied. Create an access key for it and add the key to the Claude Code
+environment's settings, never in chat. Delete the key when the work is done. Caveat: because the stack creates its own
+IAM roles, this key could create a role named `ebriscola-*` with wider rights, so treat it as powerful and short-lived.
+
 ## Everyday operations
 
 - **New code / new photos:** build a pack with the new code, `aws s3 cp settlers.ebdeck s3://<PackBucketName>/`,
