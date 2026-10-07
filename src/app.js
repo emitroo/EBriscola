@@ -1747,16 +1747,45 @@
     if (ev.key === 'Enter' && ev.target.id === 'pj-room' && !net.joining) joinRoom(ev.target.value, false);
   });
 
+  /** Pack servers to try: this site's own /api/pack when served from AWS, then the configured one. */
+  function packApis() {
+    const out = [];
+    if (location.protocol === 'https:' && !/\.github\.io$/.test(location.hostname)) out.push(location.origin + '/api/pack');
+    const cfg = (window.EB_CONFIG && window.EB_CONFIG.packApi) || '';
+    if (/^https:\/\//.test(cfg) && !out.includes(cfg)) out.push(cfg);
+    if (window.EB_TEST_PACK_API) out.push(window.EB_TEST_PACK_API); // browser tests only
+    return out;
+  }
+
+  /** Download the encrypted pack, proving the code with a derived token (the code itself never leaves the phone). */
+  async function fetchPack(code) {
+    const token = await PH.token(code);
+    let reached = false;
+    for (const url of packApis()) {
+      let r;
+      try { r = await fetch(url, { headers: { 'x-pack-token': token }, cache: 'no-store', credentials: 'omit' }); } catch (e) { continue; }
+      if (r.status === 200) return new Uint8Array(await r.arrayBuffer());
+      if (r.status === 403) throw new Error('code');
+      if (r.status === 429) throw new Error('busy');
+      if (r.status !== 404) reached = true;
+    }
+    throw new Error(reached ? 'busy' : 'net');
+  }
+
   /** Open an encrypted photo pack with its code: unlocks the pack's deck and keeps the photos on this phone. */
   async function unlockWith(inp, fileInp) {
     const code = inp ? inp.value : '';
     const file = fileInp && fileInp.files && fileInp.files[0];
-    if (!file) { pairSet('unlock-status', esc(t('pack_need'))); return; }
-    if (!String(code).trim()) { pairSet('unlock-status', esc(t('pack_bad_code'))); return; }
-    pairSet('unlock-status', esc(t('pack_reading')));
+    if (!String(code).trim()) { pairSet('unlock-status', esc(t(file || packApis().length ? 'pack_bad_code' : 'pack_need'))); return; }
+    if (!file && !packApis().length) { pairSet('unlock-status', esc(t('pack_need'))); return; }
+    pairSet('unlock-status', esc(t(file ? 'pack_reading' : 'pack_fetching')));
     let pack;
-    try { pack = await PH.open(new Uint8Array(await file.arrayBuffer()), code); } catch (e) {
-      pairSet('unlock-status', esc(t(e.message === 'code' ? 'pack_bad_code' : 'pack_bad_file')));
+    try {
+      const bytes = file ? new Uint8Array(await file.arrayBuffer()) : await fetchPack(code);
+      pack = await PH.open(bytes, code);
+    } catch (e) {
+      const k = { code: 'pack_bad_code', busy: 'pack_busy', net: 'pack_net' }[e.message] || 'pack_bad_file';
+      pairSet('unlock-status', esc(t(k)));
       return;
     }
     const id = pack.deck;

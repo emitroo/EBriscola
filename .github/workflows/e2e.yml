@@ -6,7 +6,7 @@ name: Browser tests (live signalling server)
 on:
   workflow_dispatch:
   push:
-    paths: ['src/**', 'test/e2e/**', 'index.html', '.github/workflows/e2e.yml']
+    paths: ['src/**', 'test/e2e/**', 'index.html', 'aws/**', '.github/workflows/e2e.yml']
 
 permissions:
   contents: read
@@ -30,8 +30,10 @@ jobs:
         run: |
           mkdir -p "$OUT"
           python3 -m http.server 8765 > /dev/null 2>&1 &
+          node test/e2e/csp-server.js 8766 > /dev/null 2>&1 &
           sleep 1
           curl -sf http://localhost:8765/ > /dev/null
+          curl -sf http://localhost:8766/ > /dev/null
       - name: Online, direct connection (2 phones)
         run: node test/e2e/two-phones.js online
       - name: Built-in TURN relay works
@@ -61,6 +63,17 @@ jobs:
       - name: One phone vs CPUs
         if: always()
         run: node test/e2e/one-phone.js 4 1
+      - name: Unlock the photo pack with just the code (real pack function, other origin)
+        if: always()
+        run: node test/e2e/pack-by-code.js
+      - name: Under the AWS security headers (CSP), online game with the live signalling server
+        if: always()
+        env: { BASE: 'http://localhost:8766/' }
+        run: node test/e2e/two-phones.js online
+      - name: Under the AWS security headers (CSP), shared deck and photo streaming
+        if: always()
+        env: { BASE: 'http://localhost:8766/' }
+        run: node test/e2e/shared-deck.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:

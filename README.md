@@ -24,6 +24,12 @@ Both phones must load the page from a website. A local file can't use the camera
 
 Then on each phone, open the URL once and install it: Chrome → menu → **Install app**; Safari → Share → **Add to Home Screen**. After that it opens offline.
 
+### Also on AWS (optional)
+
+`aws/` deploys a second copy on S3 + CloudFront with a code-checked photo pack server, security headers, usage
+alarms, a cost budget and an automatic cut-off, all inside AWS's always-free allowances. GitHub Pages keeps working
+either way. See [aws/README.md](aws/README.md).
+
 ## Play on separate phones
 
 The home screen has three clearly separate choices: **On this phone**, **Online** and **Nearby, no internet**.
@@ -90,7 +96,8 @@ Browser tests for one-phone play, two-phone pairing, reconnection and camera sca
 - `src/ai.js`: CPU players
 - `src/decks.js`: regional deck styles and SVG card renderer
 - `src/photos.js`: encrypted photo packs, on-phone photo storage
-- `tools/make-pack.mjs`: builds a photo pack
+- `tools/make-pack.mjs`: builds a photo pack; `tools/pack-token.mjs`: token hash for the AWS pack server
+- `aws/`: AWS stack, functions and deploy scripts
 - `src/net.js`: WebRTC link, PeerJS signalling client, QR encode/scan, pairing codes
 - `src/app.js`, `src/style.css`, `src/body.html`, `src/i18n.js`: UI, game flow, host/guest logic
 - `src/vendor/`: [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) (MIT) and [jsQR](https://github.com/cozmo/jsQR) (Apache-2.0), minified

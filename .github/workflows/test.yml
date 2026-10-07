@@ -21,5 +21,8 @@ jobs:
           node-version: 22
       - run: npm test
       - run: npm run build
-      - name: Check committed build is up to date
-        run: git diff --exit-code -- index.html sw.js
+      - run: node aws/build.mjs
+      - name: Check committed build and AWS template are up to date
+        run: git diff --exit-code -- index.html sw.js aws/template.yaml
+      - name: Lint the AWS template
+        run: pipx run cfn-lint aws/template.yaml

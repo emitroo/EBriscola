@@ -274,12 +274,12 @@
   });
 
   Object.assign(en, { unlock_t: 'Have a photo pack?', unlock: 'Unlock', unlock_ok: 'Unlocked: {name}', deck_shared: 'Shared: everyone in this game sees it',
-    pack_label: 'Photo pack (.ebdeck file)', pack_code: 'Code', pack_need: 'Choose the photo pack file, then enter its code.', pack_reading: 'Opening the photo pack…', pack_bad_code: 'Wrong code for this photo pack.',
+    pack_label: 'Photo pack (.ebdeck file; not needed if the photo server is set up)', pack_fetching: 'Fetching the photos…', pack_busy: 'Too many tries. Wait a few minutes and try again.', pack_net: 'Couldn’t reach the photo server. Choose the pack file instead.', pack_code: 'Code', pack_need: 'Choose the photo pack file, then enter its code.', pack_reading: 'Opening the photo pack…', pack_bad_code: 'Wrong code for this photo pack.',
     pack_bad_file: 'That file isn’t a photo pack for this deck.', pack_ok: 'Unlocked: {name}, {n} photos on this phone',
     photos_have: '{n} photos, stored on this phone only.', photos_none: 'No photos on this phone yet: load a photo pack, or play in a game with someone who has them.',
     photos_clear: 'Remove photos from this phone' });
   Object.assign(it, { unlock_t: 'Hai un pacchetto foto?', unlock: 'Sblocca', unlock_ok: 'Sbloccato: {name}', deck_shared: 'Condiviso: lo vedono tutti i giocatori',
-    pack_label: 'Pacchetto foto (file .ebdeck)', pack_code: 'Codice', pack_need: 'Scegli il file del pacchetto foto, poi inserisci il codice.', pack_reading: 'Apro il pacchetto foto…', pack_bad_code: 'Codice sbagliato per questo pacchetto foto.',
+    pack_label: 'Pacchetto foto (file .ebdeck; non serve se il server foto è attivo)', pack_fetching: 'Scarico le foto…', pack_busy: 'Troppi tentativi. Aspetta qualche minuto e riprova.', pack_net: 'Server foto non raggiungibile. Scegli il file del pacchetto.', pack_code: 'Codice', pack_need: 'Scegli il file del pacchetto foto, poi inserisci il codice.', pack_reading: 'Apro il pacchetto foto…', pack_bad_code: 'Codice sbagliato per questo pacchetto foto.',
     pack_bad_file: 'Questo file non è un pacchetto foto per questo mazzo.', pack_ok: 'Sbloccato: {name}, {n} foto su questo telefono',
     photos_have: '{n} foto, salvate solo su questo telefono.', photos_none: 'Ancora nessuna foto su questo telefono: carica un pacchetto foto, o gioca con qualcuno che le ha.',
     photos_clear: 'Rimuovi le foto da questo telefono' });

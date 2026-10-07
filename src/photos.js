@@ -25,6 +25,14 @@
     return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: ITER, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
   }
 
+  /** Download token for a pack server: proves knowledge of the code without sending it. Derived separately from the
+   *  encryption key, so the server (which stores only SHA-256 of this token) can't decrypt the pack. */
+  async function token(code) {
+    const base = await crypto.subtle.importKey('raw', enc.encode(norm(code)), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode('ebriscola/pack-token/v1'), iterations: ITER, hash: 'SHA-256' }, base, 256);
+    return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
   /** Keep only well-formed photos: card 0..39 -> { type: 'image/…', data: base64 }. */
   function clean(photos) {
     const out = {};
@@ -87,7 +95,7 @@
     return out;
   }
 
-  const P = { seal, open, clean, load, save, remove, urls, b64, unb64 };
+  const P = { seal, open, token, clean, load, save, remove, urls, b64, unb64 };
   if (typeof module === 'object' && module.exports) module.exports = P;
   else root.BriscolaPhotos = P;
 })(typeof self !== 'undefined' ? self : this);

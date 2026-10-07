@@ -780,6 +780,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 });
 
 ;
+/* Deployment settings. packApi: full URL of the AWS pack server (https://<distribution>.cloudfront.net/api/pack), so
+ * copies of the app hosted elsewhere (GitHub Pages) can fetch a private photo pack with just its code. Empty = only
+ * the same-origin /api/pack (when the app itself is served from AWS) or a pack file. */
+window.EB_CONFIG = { packApi: '' };
+
+;
 /* Regional Italian deck styles, drawn as SVG. No image files: every card is generated, so the game works offline.
  * The art is a stylised interpretation of each regional pattern (suit system, single/double-headed courts,
  * colour scheme, card back), not a reproduction of any manufacturer's artwork.
@@ -1297,6 +1303,14 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: ITER, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
   }
 
+  /** Download token for a pack server: proves knowledge of the code without sending it. Derived separately from the
+   *  encryption key, so the server (which stores only SHA-256 of this token) can't decrypt the pack. */
+  async function token(code) {
+    const base = await crypto.subtle.importKey('raw', enc.encode(norm(code)), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode('ebriscola/pack-token/v1'), iterations: ITER, hash: 'SHA-256' }, base, 256);
+    return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
   /** Keep only well-formed photos: card 0..39 -> { type: 'image/…', data: base64 }. */
   function clean(photos) {
     const out = {};
@@ -1359,7 +1373,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     return out;
   }
 
-  const P = { seal, open, clean, load, save, remove, urls, b64, unb64 };
+  const P = { seal, open, token, clean, load, save, remove, urls, b64, unb64 };
   if (typeof module === 'object' && module.exports) module.exports = P;
   else root.BriscolaPhotos = P;
 })(typeof self !== 'undefined' ? self : this);
@@ -1641,12 +1655,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   });
 
   Object.assign(en, { unlock_t: 'Have a photo pack?', unlock: 'Unlock', unlock_ok: 'Unlocked: {name}', deck_shared: 'Shared: everyone in this game sees it',
-    pack_label: 'Photo pack (.ebdeck file)', pack_code: 'Code', pack_need: 'Choose the photo pack file, then enter its code.', pack_reading: 'Opening the photo pack…', pack_bad_code: 'Wrong code for this photo pack.',
+    pack_label: 'Photo pack (.ebdeck file; not needed if the photo server is set up)', pack_fetching: 'Fetching the photos…', pack_busy: 'Too many tries. Wait a few minutes and try again.', pack_net: 'Couldn’t reach the photo server. Choose the pack file instead.', pack_code: 'Code', pack_need: 'Choose the photo pack file, then enter its code.', pack_reading: 'Opening the photo pack…', pack_bad_code: 'Wrong code for this photo pack.',
     pack_bad_file: 'That file isn’t a photo pack for this deck.', pack_ok: 'Unlocked: {name}, {n} photos on this phone',
     photos_have: '{n} photos, stored on this phone only.', photos_none: 'No photos on this phone yet: load a photo pack, or play in a game with someone who has them.',
     photos_clear: 'Remove photos from this phone' });
   Object.assign(it, { unlock_t: 'Hai un pacchetto foto?', unlock: 'Sblocca', unlock_ok: 'Sbloccato: {name}', deck_shared: 'Condiviso: lo vedono tutti i giocatori',
-    pack_label: 'Pacchetto foto (file .ebdeck)', pack_code: 'Codice', pack_need: 'Scegli il file del pacchetto foto, poi inserisci il codice.', pack_reading: 'Apro il pacchetto foto…', pack_bad_code: 'Codice sbagliato per questo pacchetto foto.',
+    pack_label: 'Pacchetto foto (file .ebdeck; non serve se il server foto è attivo)', pack_fetching: 'Scarico le foto…', pack_busy: 'Troppi tentativi. Aspetta qualche minuto e riprova.', pack_net: 'Server foto non raggiungibile. Scegli il file del pacchetto.', pack_code: 'Codice', pack_need: 'Scegli il file del pacchetto foto, poi inserisci il codice.', pack_reading: 'Apro il pacchetto foto…', pack_bad_code: 'Codice sbagliato per questo pacchetto foto.',
     pack_bad_file: 'Questo file non è un pacchetto foto per questo mazzo.', pack_ok: 'Sbloccato: {name}, {n} foto su questo telefono',
     photos_have: '{n} foto, salvate solo su questo telefono.', photos_none: 'Ancora nessuna foto su questo telefono: carica un pacchetto foto, o gioca con qualcuno che le ha.',
     photos_clear: 'Rimuovi le foto da questo telefono' });
@@ -3776,16 +3790,45 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     if (ev.key === 'Enter' && ev.target.id === 'pj-room' && !net.joining) joinRoom(ev.target.value, false);
   });
 
+  /** Pack servers to try: this site's own /api/pack when served from AWS, then the configured one. */
+  function packApis() {
+    const out = [];
+    if (location.protocol === 'https:' && !/\.github\.io$/.test(location.hostname)) out.push(location.origin + '/api/pack');
+    const cfg = (window.EB_CONFIG && window.EB_CONFIG.packApi) || '';
+    if (/^https:\/\//.test(cfg) && !out.includes(cfg)) out.push(cfg);
+    if (window.EB_TEST_PACK_API) out.push(window.EB_TEST_PACK_API); // browser tests only
+    return out;
+  }
+
+  /** Download the encrypted pack, proving the code with a derived token (the code itself never leaves the phone). */
+  async function fetchPack(code) {
+    const token = await PH.token(code);
+    let reached = false;
+    for (const url of packApis()) {
+      let r;
+      try { r = await fetch(url, { headers: { 'x-pack-token': token }, cache: 'no-store', credentials: 'omit' }); } catch (e) { continue; }
+      if (r.status === 200) return new Uint8Array(await r.arrayBuffer());
+      if (r.status === 403) throw new Error('code');
+      if (r.status === 429) throw new Error('busy');
+      if (r.status !== 404) reached = true;
+    }
+    throw new Error(reached ? 'busy' : 'net');
+  }
+
   /** Open an encrypted photo pack with its code: unlocks the pack's deck and keeps the photos on this phone. */
   async function unlockWith(inp, fileInp) {
     const code = inp ? inp.value : '';
     const file = fileInp && fileInp.files && fileInp.files[0];
-    if (!file) { pairSet('unlock-status', esc(t('pack_need'))); return; }
-    if (!String(code).trim()) { pairSet('unlock-status', esc(t('pack_bad_code'))); return; }
-    pairSet('unlock-status', esc(t('pack_reading')));
+    if (!String(code).trim()) { pairSet('unlock-status', esc(t(file || packApis().length ? 'pack_bad_code' : 'pack_need'))); return; }
+    if (!file && !packApis().length) { pairSet('unlock-status', esc(t('pack_need'))); return; }
+    pairSet('unlock-status', esc(t(file ? 'pack_reading' : 'pack_fetching')));
     let pack;
-    try { pack = await PH.open(new Uint8Array(await file.arrayBuffer()), code); } catch (e) {
-      pairSet('unlock-status', esc(t(e.message === 'code' ? 'pack_bad_code' : 'pack_bad_file')));
+    try {
+      const bytes = file ? new Uint8Array(await file.arrayBuffer()) : await fetchPack(code);
+      pack = await PH.open(bytes, code);
+    } catch (e) {
+      const k = { code: 'pack_bad_code', busy: 'pack_busy', net: 'pack_net' }[e.message] || 'pack_bad_file';
+      pairSet('unlock-status', esc(t(k)));
       return;
     }
     const id = pack.deck;

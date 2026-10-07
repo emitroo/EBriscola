@@ -1,0 +1,565 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  EBriscola on AWS: the app on S3 + CloudFront, a code-checked endpoint for the private photo pack, and usage alarms,
+  a cost budget and an automatic cut-off that keep it inside the free allowances. Deploy in us-east-1.
+  (Generated from aws/template.src.yaml by aws/build.mjs; edit that file.)
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Where alarm, budget and cut-off emails go (confirm the two subscription emails after deploying).
+    AllowedPattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+  PackTokenHash:
+    Type: String
+    NoEcho: true
+    Description: SHA-256 of the pack download token (node tools/pack-token.mjs '<code>'). The code itself is never stored.
+    AllowedPattern: '^[0-9a-f]{64}$'
+  PackKey:
+    Type: String
+    Default: settlers.ebdeck
+    Description: Object key of the encrypted pack in the pack bucket.
+  AllowedOrigin:
+    Type: String
+    Default: https://emitroo.github.io
+    Description: Another site allowed to fetch the pack from the browser (the GitHub Pages copy of the app).
+  MonthlyBudgetUsd:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    Description: Monthly cost (before credits) at which everything is cut off. Emails at 50% actual and 100% forecast.
+  GitHubRepo:
+    Type: String
+    Default: emitroo/EBriscola
+    Description: owner/repo allowed to deploy the site through GitHub Actions (OIDC, no stored keys).
+  DeployBranch:
+    Type: String
+    Default: claude/briscola-multiplayer-game-9y5wfn
+  CreateGitHubOidcProvider:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: false if this AWS account already has the token.actions.githubusercontent.com identity provider.
+
+Rules:
+  UsEast1Only:
+    Assertions:
+      - Assert: !Equals [!Ref 'AWS::Region', us-east-1]
+        AssertDescription: Deploy in us-east-1 (N. Virginia), where CloudFront metrics and alarms live.
+
+Conditions:
+  MakeOidc: !Equals [!Ref CreateGitHubOidcProvider, 'true']
+
+Resources:
+  # ---------- storage ----------
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration: { BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true }
+      OwnershipControls: { Rules: [{ ObjectOwnership: BucketOwnerEnforced }] }
+      BucketEncryption: { ServerSideEncryptionConfiguration: [{ ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 } }] }
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: CloudFrontOnly
+            Effect: Allow
+            Principal: { Service: cloudfront.amazonaws.com }
+            Action: s3:GetObject
+            Resource: !Sub '${SiteBucket.Arn}/*'
+            Condition: { StringEquals: { 'AWS:SourceArn': !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}' } }
+          - Sid: TlsOnly
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: [!GetAtt SiteBucket.Arn, !Sub '${SiteBucket.Arn}/*']
+            Condition: { Bool: { 'aws:SecureTransport': 'false' } }
+
+  PackBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration: { BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true }
+      OwnershipControls: { Rules: [{ ObjectOwnership: BucketOwnerEnforced }] }
+      BucketEncryption: { ServerSideEncryptionConfiguration: [{ ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 } }] }
+
+  PackBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref PackBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: TlsOnly
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: [!GetAtt PackBucket.Arn, !Sub '${PackBucket.Arn}/*']
+            Condition: { Bool: { 'aws:SecureTransport': 'false' } }
+
+  # Rate-limit counters. Fixed provisioned capacity (inside the always-free 25/25), items expire on their own.
+  AttemptsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PROVISIONED
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 5 }
+      AttributeDefinitions: [{ AttributeName: k, AttributeType: S }]
+      KeySchema: [{ AttributeName: k, KeyType: HASH }]
+      TimeToLiveSpecification: { AttributeName: exp, Enabled: true }
+
+  # ---------- pack endpoint ----------
+  PackFnLogs:
+    Type: AWS::Logs::LogGroup
+    Properties: { LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-pack', RetentionInDays: 14 }
+
+  PackFnRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement: [{ Effect: Allow, Principal: { Service: lambda.amazonaws.com }, Action: sts:AssumeRole }]
+      Policies:
+        - PolicyName: pack
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - { Effect: Allow, Action: s3:GetObject, Resource: !Sub '${PackBucket.Arn}/${PackKey}' }
+              - { Effect: Allow, Action: dynamodb:UpdateItem, Resource: !GetAtt AttemptsTable.Arn }
+              - { Effect: Allow, Action: [logs:CreateLogStream, logs:PutLogEvents], Resource: !Sub '${PackFnLogs.Arn}' }
+
+  PackFn:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-pack'
+      Description: Returns the encrypted photo pack for a valid code-derived token (rate limited).
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      Handler: index.handler
+      MemorySize: 256
+      Timeout: 10
+      Role: !GetAtt PackFnRole.Arn
+      LoggingConfig: { LogGroup: !Ref PackFnLogs }
+      Environment:
+        Variables:
+          TOKEN_HASH: !Ref PackTokenHash
+          BUCKET: !Ref PackBucket
+          KEY: !Ref PackKey
+          TABLE: !Ref AttemptsTable
+          ORIGINS: !Ref AllowedOrigin
+      Code:
+        ZipFile: |
+          // GET /api/pack with header x-pack-token -> the encrypted photo pack, or 403/429. Only CloudFront can call it.
+          const C = require('crypto');
+          const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
+          const { DynamoDBClient, UpdateItemCommand } = require('@aws-sdk/client-dynamodb');
+          const E = process.env;
+          const d = { s3: new S3Client({}), db: new DynamoDBClient({}), now: () => Date.now() };
+          exports.d = d;
+          const ok = (E.ORIGINS || '').split(',');
+          const hdr = (o) => ({ 'cache-control': 'no-store', vary: 'Origin', ...(ok.includes(o) ? {
+            'access-control-allow-origin': o, 'access-control-allow-headers': 'x-pack-token',
+            'access-control-allow-methods': 'GET', 'access-control-max-age': '600' } : {}) });
+          const res = (s, o, b, t) => ({ statusCode: s, headers: { ...hdr(o), 'content-type': t || 'text/plain' },
+            body: b || '', isBase64Encoded: !!t });
+
+          // Count one attempt against key; false once over limit (also when DynamoDB throttles: fail closed).
+          async function hit(key, limit, ttl) {
+            try {
+              await d.db.send(new UpdateItemCommand({ TableName: E.TABLE, Key: { k: { S: key } },
+                UpdateExpression: 'ADD #n :1 SET #e = if_not_exists(#e, :e)',
+                ConditionExpression: 'attribute_not_exists(#n) OR #n < :l', ExpressionAttributeNames: { '#n': 'n', '#e': 'exp' },
+                ExpressionAttributeValues: { ':1': { N: '1' }, ':l': { N: String(limit) },
+                  ':e': { N: String(Math.floor(d.now() / 1000) + ttl) } } }));
+              return true;
+            } catch (e) { return false; }
+          }
+
+          exports.handler = async (ev) => {
+            const h = ev.headers || {}, o = h.origin || '';
+            const m = ev.requestContext && ev.requestContext.http && ev.requestContext.http.method;
+            if (m === 'OPTIONS') return res(204, o);
+            if (m !== 'GET') return res(405, o);
+            const tok = String(h['x-pack-token'] || '');
+            if (!/^[0-9a-f]{64}$/.test(tok)) return res(400, o);
+            const ip = String(h['cloudfront-viewer-address'] || 'none').replace(/:\d+$/, '');
+            const t = d.now(), win = Math.floor(t / 600000), day = Math.floor(t / 86400000);
+            // At most 10 tries per IP per 10 minutes, and 300 per day across everyone.
+            if (!(await hit('ip#' + ip + '#' + win, 10, 900)) || !(await hit('all#' + day, 300, 90000))) return res(429, o);
+            const got = C.createHash('sha256').update(tok).digest();
+            const want = Buffer.from(E.TOKEN_HASH || '', 'hex');
+            if (want.length !== 32 || !C.timingSafeEqual(got, want)) return res(403, o);
+            const r = await d.s3.send(new GetObjectCommand({ Bucket: E.BUCKET, Key: E.KEY }));
+            const body = Buffer.from(await r.Body.transformToByteArray()).toString('base64');
+            return res(200, o, body, 'application/octet-stream');
+          };
+
+  # Only CloudFront can call it (IAM auth + origin access control).
+  PackFnUrl:
+    Type: AWS::Lambda::Url
+    Properties: { TargetFunctionArn: !GetAtt PackFn.Arn, AuthType: AWS_IAM }
+
+  PackFnUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PackFn
+      Action: lambda:InvokeFunctionUrl
+      FunctionUrlAuthType: AWS_IAM
+      Principal: cloudfront.amazonaws.com
+      SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}'
+
+  PackFnInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PackFn
+      Action: lambda:InvokeFunction
+      Principal: cloudfront.amazonaws.com
+      SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}'
+
+  # ---------- CloudFront ----------
+  SiteOac:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig: { Name: !Sub '${AWS::StackName}-s3', OriginAccessControlOriginType: s3, SigningBehavior: always, SigningProtocol: sigv4 }
+
+  ApiOac:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig: { Name: !Sub '${AWS::StackName}-lambda', OriginAccessControlOriginType: lambda, SigningBehavior: always, SigningProtocol: sigv4 }
+
+  ApiOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub '${AWS::StackName}-api'
+        HeadersConfig: { HeaderBehavior: whitelist, Headers: [x-pack-token, origin, CloudFront-Viewer-Address] }
+        CookiesConfig: { CookieBehavior: none }
+        QueryStringsConfig: { QueryStringBehavior: none }
+
+  SecurityHeaders:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub '${AWS::StackName}-security'
+        SecurityHeadersConfig:
+          StrictTransportSecurity: { AccessControlMaxAgeSec: 31536000, IncludeSubdomains: true, Override: true }
+          ContentTypeOptions: { Override: true }
+          FrameOptions: { FrameOption: DENY, Override: true }
+          ReferrerPolicy: { ReferrerPolicy: no-referrer, Override: true }
+          ContentSecurityPolicy:
+            Override: true
+            ContentSecurityPolicy: >-
+              default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';
+              img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' wss://0.peerjs.com;
+              worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'
+        CustomHeadersConfig:
+          Items:
+            - { Header: Permissions-Policy, Value: 'camera=(self), microphone=(), geolocation=(), payment=()', Override: true }
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: EBriscola
+        DefaultRootObject: index.html
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: site
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt SiteOac.Id
+            S3OriginConfig: { OriginAccessIdentity: '' }
+          - Id: api
+            DomainName: !Select [2, !Split ['/', !GetAtt PackFnUrl.FunctionUrl]]
+            OriginAccessControlId: !GetAtt ApiOac.Id
+            CustomOriginConfig: { OriginProtocolPolicy: https-only, OriginSSLProtocols: [TLSv1.2] }
+        DefaultCacheBehavior:
+          TargetOriginId: site
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+          ResponseHeadersPolicyId: !Ref SecurityHeaders
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: api
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS]
+            CachedMethods: [GET, HEAD]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # Managed-CachingDisabled
+            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            ResponseHeadersPolicyId: !Ref SecurityHeaders
+
+  # ---------- alerts and cut-off ----------
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: EBriscola alerts
+      Subscription: [{ Protocol: email, Endpoint: !Ref AlertEmail }]
+
+  CutoffTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: EBriscola cut-off
+      Subscription:
+        - { Protocol: email, Endpoint: !Ref AlertEmail }
+        - { Protocol: lambda, Endpoint: !GetAtt CutoffFn.Arn }
+
+  TopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertTopic, !Ref CutoffTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: [budgets.amazonaws.com, cloudwatch.amazonaws.com] }
+            Action: sns:Publish
+            Resource: [!Ref AlertTopic, !Ref CutoffTopic]
+            Condition: { StringEquals: { 'aws:SourceAccount': !Ref 'AWS::AccountId' } }
+
+  CutoffFnLogs:
+    Type: AWS::Logs::LogGroup
+    Properties: { LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-cutoff', RetentionInDays: 90 }
+
+  CutoffFnRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement: [{ Effect: Allow, Principal: { Service: lambda.amazonaws.com }, Action: sts:AssumeRole }]
+      Policies:
+        - PolicyName: cutoff
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - { Effect: Allow, Action: lambda:PutFunctionConcurrency, Resource: !GetAtt PackFn.Arn }
+              - Effect: Allow
+                Action: [cloudfront:GetDistributionConfig, cloudfront:UpdateDistribution]
+                Resource: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}'
+              - { Effect: Allow, Action: [logs:CreateLogStream, logs:PutLogEvents], Resource: !Sub '${CutoffFnLogs.Arn}' }
+
+  CutoffFn:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-cutoff'
+      Description: Stops the pack endpoint and disables the CloudFront distribution (GitHub Pages stays up).
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      Handler: index.handler
+      MemorySize: 256
+      Timeout: 60
+      Role: !GetAtt CutoffFnRole.Arn
+      LoggingConfig: { LogGroup: !Ref CutoffFnLogs }
+      Environment:
+        Variables:
+          PACK_FN: !Ref PackFn
+          DIST_ID: !Ref Distribution
+      Code:
+        ZipFile: |
+          // Cut-off switch: run by a usage alarm or the cost budget (via SNS). Stops the pack function (reserved concurrency 0)
+          // and disables the CloudFront distribution. GitHub Pages is unaffected. Undo with aws/reenable.sh.
+          const { CloudFrontClient, GetDistributionConfigCommand, UpdateDistributionCommand } = require('@aws-sdk/client-cloudfront');
+          const { LambdaClient, PutFunctionConcurrencyCommand } = require('@aws-sdk/client-lambda');
+          const E = process.env;
+          const d = { cf: new CloudFrontClient({}), lambda: new LambdaClient({}) };
+          exports.d = d;
+
+          exports.handler = async (ev) => {
+            const why = (ev.Records || []).map((r) => r.Sns && (r.Sns.Subject || '').slice(0, 120)).join('; ');
+            console.log('cut-off triggered:', why);
+            await d.lambda.send(new PutFunctionConcurrencyCommand({ FunctionName: E.PACK_FN, ReservedConcurrentExecutions: 0 }));
+            const cur = await d.cf.send(new GetDistributionConfigCommand({ Id: E.DIST_ID }));
+            if (cur.DistributionConfig.Enabled) {
+              cur.DistributionConfig.Enabled = false;
+              await d.cf.send(new UpdateDistributionCommand({ Id: E.DIST_ID, IfMatch: cur.ETag, DistributionConfig: cur.DistributionConfig }));
+            }
+            return { stopped: true, why };
+          };
+
+  CutoffFnPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CutoffFn
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref CutoffTopic
+
+  # Free allowances (always free): CloudFront 10M requests and 1 TB out a month; Lambda 1M requests a month.
+  # Warn early by email; cut off well before a month's allowance could be used up.
+  CfRequestsWarn:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: 'Warning: over 5,000 CloudFront requests in an hour.'
+      Namespace: AWS/CloudFront
+      MetricName: Requests
+      Dimensions: [{ Name: DistributionId, Value: !Ref Distribution }, { Name: Region, Value: Global }]
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 1
+      Threshold: 5000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+
+  CfRequestsHourlyCutoff:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: 'Cut-off: over 20,000 CloudFront requests in an hour.'
+      Namespace: AWS/CloudFront
+      MetricName: Requests
+      Dimensions: [{ Name: DistributionId, Value: !Ref Distribution }, { Name: Region, Value: Global }]
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 1
+      Threshold: 20000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref CutoffTopic]
+
+  CfRequestsDailyCutoff:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: 'Cut-off: over 300,000 CloudFront requests in a day (pace for 9M of the 10M free a month).'
+      Namespace: AWS/CloudFront
+      MetricName: Requests
+      Dimensions: [{ Name: DistributionId, Value: !Ref Distribution }, { Name: Region, Value: Global }]
+      Statistic: Sum
+      Period: 86400
+      EvaluationPeriods: 1
+      Threshold: 300000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref CutoffTopic]
+
+  CfBytesWarn:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: 'Warning: over 500 MB served by CloudFront in an hour.'
+      Namespace: AWS/CloudFront
+      MetricName: BytesDownloaded
+      Dimensions: [{ Name: DistributionId, Value: !Ref Distribution }, { Name: Region, Value: Global }]
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 1
+      Threshold: 500000000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+
+  CfBytesDailyCutoff:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: 'Cut-off: over 30 GB served by CloudFront in a day (pace for 900 GB of the 1 TB free a month).'
+      Namespace: AWS/CloudFront
+      MetricName: BytesDownloaded
+      Dimensions: [{ Name: DistributionId, Value: !Ref Distribution }, { Name: Region, Value: Global }]
+      Statistic: Sum
+      Period: 86400
+      EvaluationPeriods: 1
+      Threshold: 30000000000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref CutoffTopic]
+
+  PackCallsCutoff:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: 'Cut-off: over 300 pack requests in an hour (normal use is a handful a week).'
+      Namespace: AWS/Lambda
+      MetricName: Invocations
+      Dimensions: [{ Name: FunctionName, Value: !Ref PackFn }]
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 1
+      Threshold: 300
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref CutoffTopic]
+
+  PackErrors:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: 'Warning: the pack endpoint failed 5+ times in an hour (missing pack file?).'
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions: [{ Name: FunctionName, Value: !Ref PackFn }]
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+
+  # Cost before credits, so it means something while sign-up credits are hiding the bill.
+  # Budget figures update a few times a day, so this is the slow backstop behind the alarms above.
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: !Sub '${AWS::StackName}-monthly'
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit: { Amount: !Ref MonthlyBudgetUsd, Unit: USD }
+        CostTypes: { IncludeCredit: false, IncludeRefund: false }
+      NotificationsWithSubscribers:
+        - Notification: { NotificationType: ACTUAL, ComparisonOperator: GREATER_THAN, Threshold: 50, ThresholdType: PERCENTAGE }
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref AlertEmail }]
+        - Notification: { NotificationType: FORECASTED, ComparisonOperator: GREATER_THAN, Threshold: 100, ThresholdType: PERCENTAGE }
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref AlertEmail }]
+        - Notification: { NotificationType: ACTUAL, ComparisonOperator: GREATER_THAN, Threshold: 100, ThresholdType: PERCENTAGE }
+          Subscribers: [{ SubscriptionType: SNS, Address: !Ref CutoffTopic }]
+
+  # ---------- deploys from GitHub Actions (short-lived credentials, site bucket + invalidation only) ----------
+  GitHubOidc:
+    Type: AWS::IAM::OIDCProvider
+    Condition: MakeOidc
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Federated: !Sub 'arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com' }
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                'token.actions.githubusercontent.com:aud': sts.amazonaws.com
+                'token.actions.githubusercontent.com:sub': !Sub 'repo:${GitHubRepo}:ref:refs/heads/${DeployBranch}'
+      Policies:
+        - PolicyName: deploy-site
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - { Effect: Allow, Action: s3:ListBucket, Resource: !GetAtt SiteBucket.Arn }
+              - { Effect: Allow, Action: [s3:PutObject, s3:DeleteObject], Resource: !Sub '${SiteBucket.Arn}/*' }
+              - Effect: Allow
+                Action: cloudfront:CreateInvalidation
+                Resource: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}'
+
+Outputs:
+  SiteUrl:
+    Value: !Sub 'https://${Distribution.DomainName}/'
+  PackApi:
+    Description: Put this in src/config.js (packApi) so the GitHub Pages copy can fetch the pack by code.
+    Value: !Sub 'https://${Distribution.DomainName}/api/pack'
+  DistributionId:
+    Value: !Ref Distribution
+  SiteBucketName:
+    Value: !Ref SiteBucket
+  PackBucketName:
+    Value: !Ref PackBucket
+  PackFunctionName:
+    Value: !Ref PackFn
+  DeployRoleArn:
+    Value: !GetAtt DeployRole.Arn
