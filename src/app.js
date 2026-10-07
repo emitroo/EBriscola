@@ -13,7 +13,7 @@
   // BRISCOLA_NO_NET is set by builds that run where peer-to-peer connections are blocked (the claude.ai Artifact).
   const N = window.BriscolaNet && window.BriscolaNet.supported() && !window.BRISCOLA_NO_NET ? window.BriscolaNet : null;
   const STORE = 'briscola.v1';
-  const SITE = 'emitroo.github.io/Briscola';
+  const SITE = 'emitroo.github.io/EBriscola';
 
   // ---------- persistence ----------
   const store = {
